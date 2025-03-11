@@ -1,0 +1,102 @@
+{
+    "account_name": "Kiln_Staking",
+    "address": "TQzd66b9EFVHJfZK5AmiVhBjtJvXGeSPPZ",
+    "balance": 536823,
+    "create_time": 1696344120000,
+    "latest_opration_time": 1735555509000,
+    "allowance": 42057496803,
+    "latest_withdraw_time": 1735555431000,
+    "is_witness": true,
+    "latest_consume_free_time": 1735555509000,
+    "net_window_size": 28800000,
+    "net_window_optimized": true,
+    "account_resource": {
+      "energy_window_size": 28800000,
+      "energy_window_optimized": true
+    },
+    "owner_permission": {
+      "permission_name": "owner",
+      "threshold": 1,
+      "keys": [
+        {
+          "address": "TQzd66b9EFVHJfZK5AmiVhBjtJvXGeSPPZ",
+          "weight": 1
+        }
+      ]
+    },
+    "witness_permission": {
+      "type": "Witness",
+      "id": 1,
+      "permission_name": "witness",
+      "threshold": 1,
+      "keys": [
+        {
+          "address": "TU29kkaeii4jZrfpVtLxrxyh8wB8Axu1mp",
+          "weight": 1
+        }
+      ]
+    },
+    "active_permission": [
+      {
+        "type": "Active",
+        "id": 2,
+        "permission_name": "active",
+        "threshold": 1,
+        "operations": "7fff1fc0033ec30f000000000000000000000000000000000000000000000000",
+        "keys": [
+          {
+            "address": "TQzd66b9EFVHJfZK5AmiVhBjtJvXGeSPPZ",
+            "weight": 1
+          }
+        ]
+      }
+    ],
+    "frozenV2": [
+      {
+        "amount": 1000000
+      },
+      {
+        "type": "ENERGY"
+      },
+      {
+        "type": "TRON_POWER"
+      }
+    ],
+    "assetV2": [
+      {
+        "key": "1004977",
+        "value": 8888880000
+      },
+      {
+        "key": "1005015",
+        "value": 88888888
+      },
+      {
+        "key": "1004991",
+        "value": 1
+      },
+      {
+        "key": "1005013",
+        "value": 88123456
+      }
+    ],
+    "free_asset_net_usageV2": [
+      {
+        "key": "1004977",
+        "value": 0
+      },
+      {
+        "key": "1004991",
+        "value": 0
+      },
+      {
+        "key": "1005013",
+        "value": 0
+      },
+      {
+        "key": "1005015",
+        "value": 0
+      }
+    ],
+    "asset_optimized": true
+}

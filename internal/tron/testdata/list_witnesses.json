@@ -1,0 +1,73 @@
+{
+    "witnesses": [
+      {
+        "address": "418440ffd578f7a5abf3537b5f46a6980d382db581",
+        "voteCount": 1213624866,
+        "url": "https://www.huobiwallet.com/",
+        "totalProduced": 1377851,
+        "totalMissed": 12648,
+        "latestBlockNum": 69867177,
+        "latestSlotNum": 580084644,
+        "isJobs": true
+      },
+      {
+        "address": "411761716b76c6a3d885299c366826046c09b08d26",
+        "voteCount": 1213252182,
+        "url": "cryptoinnovationfund",
+        "totalProduced": 1248768,
+        "totalMissed": 177,
+        "latestBlockNum": 69867178,
+        "latestSlotNum": 580084645,
+        "isJobs": true
+      },
+      {
+        "address": "41a2c342b17aa0ae86abc8191498cd4633aa33a821",
+        "voteCount": 1212767307,
+        "url": "https://cryptoai.com",
+        "totalProduced": 789496,
+        "totalMissed": 18,
+        "latestBlockNum": 69867179,
+        "latestSlotNum": 580084646,
+        "isJobs": true
+      },
+      {
+        "address": "4162398d516b555ac64af24416e05c199c01823048",
+        "voteCount": 2886596897,
+        "url": "https://poloniex.com/",
+        "totalProduced": 1950712,
+        "totalMissed": 366,
+        "latestBlockNum": 69867194,
+        "latestSlotNum": 580084661,
+        "isJobs": true
+      },
+      {
+        "address": "41c5614f3ebf88785fedf9d69bd82aac1353f8b431",
+        "voteCount": 984205071,
+        "url": "https://www.okx.com/earn/home",
+        "totalProduced": 977389,
+        "totalMissed": 743,
+        "latestBlockNum": 69867185,
+        "latestSlotNum": 580084652,
+        "isJobs": true
+      },
+      {
+        "address": "4170df4a99c7e3e249b290b43e11eb2368afd59899",
+        "voteCount": 900049596,
+        "url": "https://nansen.ai",
+        "totalProduced": 6484,
+        "latestBlockNum": 69867190,
+        "latestSlotNum": 580084657,
+        "isJobs": true
+      },
+      {
+        "address": "41022939a4a06cbc7b384096c1af8657ec435173af",
+        "voteCount": 1212243552,
+        "url": "antinvestmentgroup",
+        "totalProduced": 1631640,
+        "totalMissed": 1139,
+        "latestBlockNum": 69867181,
+        "latestSlotNum": 580084648,
+        "isJobs": true
+      }
+    ]
+}

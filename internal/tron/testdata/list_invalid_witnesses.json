@@ -1,0 +1,14 @@
+{
+  "witnesses": [
+    {
+      "address": "TQzd66b9EFVHJfZK5AmiVhBjtJvXGeSPPZ",
+      "voteCount": "this-is-not-a-number",
+      "url": "https://example.com"
+    },
+    {
+      "address": "TQzd66b9EFVHJfZK5AmiVhBjtJvXGeSPPZ",
+      "voteCount": "this-is-not-a-number",
+      "url": "https://example.com"
+    }
+  ]
+}
