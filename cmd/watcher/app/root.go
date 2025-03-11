@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/kilnfi/tron-validator-watcher/cmd/watcher/app/config"
+	clog "github.com/kilnfi/tron-validator-watcher/internal/logger"
 	"github.com/kilnfi/tron-validator-watcher/internal/tron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -101,7 +102,7 @@ func createTronClient() (*tron.Client, error) {
 
 func initLogger() {
 	logger = logrus.New()
-	logger.SetFormatter(&logrus.TextFormatter{})
+	logger.SetFormatter(&clog.CustomTextFormatter{})
 
 	switch viper.GetString("log-level") {
 	case "debug":
