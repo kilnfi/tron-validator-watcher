@@ -1,0 +1,13 @@
+validators:
+  - address: address
+    name: name
+    instance: tron-validator-mainnet-0
+log-level: debug
+http-server:
+  host: 0.0.0.0
+  port: 8080
+block-watcher:
+  enabled: true
+  refresh-interval: 10
+rpc:
+  endpoint: https://localhost:8090
