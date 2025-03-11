@@ -7,7 +7,6 @@
 
 # configuration resources that should be keepd locally
 config.yaml
-config/
 exp/
 
 # Test binary, built with `go test -c`
