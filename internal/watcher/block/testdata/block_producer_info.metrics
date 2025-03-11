@@ -1,0 +1,3 @@
+# HELP tron_validator_watcher_block_producer_info Block producer info
+# TYPE tron_validator_watcher_block_producer_info gauge
+tron_validator_watcher_block_producer_info{rank="10",validator_address="fakeaddress",validator_name="test"} 1

@@ -11,6 +11,7 @@ exp/
 
 # Test binary, built with `go test -c`
 *.test
+coverage
 
 # Output of the go coverage tool
 *.out

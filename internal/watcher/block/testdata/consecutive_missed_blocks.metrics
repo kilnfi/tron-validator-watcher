@@ -1,0 +1,3 @@
+# HELP tron_validator_watcher_consecutive_missed_blocks_total Total number of consecutive blocks missed by the validator
+# TYPE tron_validator_watcher_consecutive_missed_blocks_total counter
+tron_validator_watcher_consecutive_missed_blocks_total{validator_address="fakeaddress",validator_name="test"} 1
