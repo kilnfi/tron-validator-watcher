@@ -3,12 +3,13 @@ package main
 import (
 	cmd "github.com/kilnfi/tron-validator-watcher/cmd/watcher/app"
 
+	clog "github.com/kilnfi/tron-validator-watcher/internal/logger"
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
 	logger := logrus.New()
-	logger.SetFormatter(&logrus.TextFormatter{})
+	logger.SetFormatter(&clog.CustomTextFormatter{})
 	logger.Level = logrus.DebugLevel
 
 	cmd := cmd.NewWatcherCommand()
