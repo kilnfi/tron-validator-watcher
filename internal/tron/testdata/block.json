@@ -1,0 +1,15 @@
+{
+    "blockID": "hash",
+    "block_header": {
+      "raw_data": {
+        "number": 10,
+        "txTrieRoot": "dummy",
+        "witness_address": "4178c842ee63b253f8f0d2955bbc582c661a078c9d",
+        "parentHash": "dummy",
+        "version": 31,
+        "timestamp": 1740491310000
+      },
+      "witness_signature": "dummy"
+    },
+    "transactions": []
+}
