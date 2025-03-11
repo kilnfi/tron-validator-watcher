@@ -2,22 +2,30 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/kilnfi/tron-validator-watcher/cmd/watcher/app/config"
 	clog "github.com/kilnfi/tron-validator-watcher/internal/logger"
+	httpserver "github.com/kilnfi/tron-validator-watcher/internal/server/http"
 	"github.com/kilnfi/tron-validator-watcher/internal/tron"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
-	logger     *logrus.Logger
 	configFile string
 	cfg        *config.Config
+	logger     *logrus.Logger
+	server     *httpserver.Server
 )
 
 func init() {
@@ -73,19 +81,54 @@ With this tool, you can track:
 }
 
 func start(cmd *cobra.Command, args []string) error {
-	fmt.Println("Starting Tron Validator Watcher...")
+	// Initialize context and cancel function
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Initialize signal channel for handling interrupts
+	ctx, cancel = signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	eg, ctx := errgroup.WithContext(ctx)
+
+	// Create a new Prometheus registry and register the metrics
+	registry := prometheus.NewRegistry()
 
 	tronClient, err := createTronClient()
 	if err != nil {
 		return fmt.Errorf("failed to create Tron client: %w", err)
 	}
 
-	block, err := tronClient.Network.GetLatestBlock(context.TODO())
+	block, err := tronClient.Network.GetLatestBlock(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get latest block: %w", err)
 	}
 	logger.Infof("Latest Block Number: %d", block.BlockHeader.RawData.Number)
 	logger.Infof("Latest Block Timestamp (ms): %d", block.BlockHeader.RawData.Timestamp)
+
+	// Starts HTTP server
+	if err := startHTTPServer(eg, registry); err != nil {
+		return fmt.Errorf("failed to start http server: %w", err)
+	}
+
+	<-ctx.Done()
+	logger.Info("shutting down")
+
+	// shutting down HTTP server
+	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	logger.Info("stopping http server")
+	if err := server.Stop(ctx); err != nil {
+		logger.Errorf("unable to stop http service: %s", err.Error())
+	}
+
+	if err := eg.Wait(); err != nil {
+		if errors.Is(err, context.Canceled) {
+			logger.Info("Program interrupted by user")
+			return nil
+		}
+		return fmt.Errorf("error during execution: %w", err)
+	}
 
 	return nil
 }
@@ -98,6 +141,30 @@ func createTronClient() (*tron.Client, error) {
 		return nil, fmt.Errorf("failed to create Tron client: %w", err)
 	}
 	return tronClient, nil
+}
+
+func startHTTPServer(eg *errgroup.Group, registry *prometheus.Registry) error {
+	var err error
+
+	server, err = httpserver.New(
+		registry,
+		httpserver.WithHost(cfg.HTTPServer.Host),
+		httpserver.WithPort(cfg.HTTPServer.Port),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to create http server: %w", err)
+	}
+
+	eg.Go(func() error {
+		logger.Infof("starting http server on %s:%d", cfg.HTTPServer.Host, cfg.HTTPServer.Port)
+
+		if err := server.Start(); err != nil {
+			return fmt.Errorf("unable to start http server: %w", err)
+		}
+		return nil
+	})
+
+	return nil
 }
 
 func initLogger() {
