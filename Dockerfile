@@ -23,6 +23,5 @@ RUN apk --no-cache add ca-certificates curl \
   && update-ca-certificates
 
 COPY --from=builder /usr/local/bin/tron-validator-watcher .
-COPY --from=builder /workspace/bin /usr/local/bin
 
 ENTRYPOINT ["./tron-validator-watcher"]
