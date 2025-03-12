@@ -1,0 +1,3 @@
+# HELP tron_validator_watcher_round_progress The current progress of the round
+# TYPE tron_validator_watcher_round_progress gauge
+tron_validator_watcher_round_progress 15

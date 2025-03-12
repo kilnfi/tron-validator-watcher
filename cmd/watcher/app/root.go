@@ -14,6 +14,7 @@ import (
 	clog "github.com/kilnfi/tron-validator-watcher/internal/logger"
 	httpserver "github.com/kilnfi/tron-validator-watcher/internal/server/http"
 	"github.com/kilnfi/tron-validator-watcher/internal/tron"
+	blockwatcher "github.com/kilnfi/tron-validator-watcher/internal/watcher/block"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -80,6 +81,7 @@ With this tool, you can track:
 	return cmd
 }
 
+// start is the entry point for the watcher command.
 func start(cmd *cobra.Command, args []string) error {
 	// Initialize context and cancel function
 	ctx, cancel := context.WithCancel(context.Background())
@@ -93,12 +95,16 @@ func start(cmd *cobra.Command, args []string) error {
 
 	// Create a new Prometheus registry and register the metrics
 	registry := prometheus.NewRegistry()
+	blockMetrics := blockwatcher.NewCollection()
+	blockMetrics.MustRegister(registry)
 
+	// Create Tron client
 	tronClient, err := createTronClient()
 	if err != nil {
 		return fmt.Errorf("failed to create Tron client: %w", err)
 	}
 
+	// Get the latest block
 	block, err := tronClient.Network.GetLatestBlock(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get latest block: %w", err)
@@ -106,9 +112,38 @@ func start(cmd *cobra.Command, args []string) error {
 	logger.Infof("Latest Block Number: %d", block.BlockHeader.RawData.Number)
 	logger.Infof("Latest Block Timestamp (ms): %d", block.BlockHeader.RawData.Timestamp)
 
+	// Get the first block in the round
+	firtBlockInRound, err := tron.GetFirstBlockNum(ctx, tronClient, block.BlockHeader.RawData.Number, block.BlockHeader.RawData.Timestamp)
+	if err != nil {
+		return fmt.Errorf("failed to get first block: %w", err)
+	}
+	logger.Infof("First Block Timestamp (ms): %d", firtBlockInRound.BlockHeader.RawData.Timestamp)
+	logger.Infof("First Block Number: %d", firtBlockInRound.BlockHeader.RawData.Number)
+
+	// Get the account info for each validator
+	validators := fetchAccountInfo(tronClient)
+
 	// Starts HTTP server
 	if err := startHTTPServer(eg, registry); err != nil {
 		return fmt.Errorf("failed to start http server: %w", err)
+	}
+
+	// Starts Block watcher
+	if cfg.BlockWatcher.Enabled {
+		bw, err := blockwatcher.NewBlockWatcher(
+			blockwatcher.WithStartBlock(block),
+			blockwatcher.WithValidators(validators),
+			blockwatcher.WithTronClient(tronClient),
+			blockwatcher.WithLogger(logger),
+			blockwatcher.WithRefreshInterval(
+				cfg.BlockWatcher.RefreshInterval,
+			),
+			blockwatcher.WithMetrics(blockMetrics),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create BlockWatcher: %v", err)
+		}
+		startBlockWatcher(ctx, eg, bw)
 	}
 
 	<-ctx.Done()
@@ -133,6 +168,7 @@ func start(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// createTronClient creates a new Tron client with the given configuration.
 func createTronClient() (*tron.Client, error) {
 	tronClient, err := tron.NewClient(
 		tron.WithBaseURL(viper.GetString("rpc.endpoint")),
@@ -143,6 +179,29 @@ func createTronClient() (*tron.Client, error) {
 	return tronClient, nil
 }
 
+// fetchAccountInfo fetches account information for each validator
+// and returns a slice of Account.
+func fetchAccountInfo(tronClient *tron.Client) []tron.Account {
+	validators := make([]tron.Account, 0, len(cfg.Validators))
+	for _, validator := range cfg.Validators {
+		account, err := tronClient.Account.GetAccount(validator.Address)
+		if err != nil {
+			logger.WithField("error", err).Error("Error getting account info")
+			os.Exit(1)
+		}
+
+		logger.Debugf("Account Address: %v", account.Address)
+		logger.Debugf("Account Name: %v", account.AccountName)
+		logger.Debugf("Account Witness Address: %v", account.WitnessInfo.Address)
+		logger.Debugf("Account Rank: %v", account.WitnessInfo.Rank)
+
+		validators = append(validators, *account)
+	}
+
+	return validators
+}
+
+// startHTTPServer starts the HTTP server.
 func startHTTPServer(eg *errgroup.Group, registry *prometheus.Registry) error {
 	var err error
 
@@ -167,6 +226,19 @@ func startHTTPServer(eg *errgroup.Group, registry *prometheus.Registry) error {
 	return nil
 }
 
+// startBlockWatcher starts the block watcher.
+func startBlockWatcher(ctx context.Context, eg *errgroup.Group, watcher *blockwatcher.BlockWatcher) {
+	eg.Go(func() error {
+		logger.Info("starting block watcher")
+
+		if err := watcher.Start(ctx); err != nil {
+			return fmt.Errorf("unable to start block watcher: %w", err)
+		}
+		return nil
+	})
+}
+
+// initLogger initializes the logger with the configuration.
 func initLogger() {
 	logger = logrus.New()
 	logger.SetFormatter(&clog.CustomTextFormatter{})
@@ -189,6 +261,8 @@ func initLogger() {
 	}
 }
 
+// initConfig load the configuration from the file and environment variables.
+// It also validates the configuration.
 func initConfig() {
 	if configFile != "" {
 		viper.SetConfigFile(configFile)
