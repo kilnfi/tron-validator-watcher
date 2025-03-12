@@ -102,6 +102,20 @@ rpc:
   endpoint: "https://localhost:8090"
 ```
 
+## 🌡️ Metrics
+
+This exporter provides the following set of metrics, which can be used to build a dashboard or create alerts.
+
+| Metric Name                                                       | Description          | Type | Labels |
+| ----------------------------------------------------------------- | -------------------- |---- | --- |
+| `tron_validator_watcher_block_producer_info`                      | Block producer info                                         | GaugeVec    | `validator_name`, `validator_address`, `rank` |
+| `tron_validator_watcher_consecutive_missed_blocks_total`          | Total number of consecutive blocks missed by the validator  | GaugeVec    | `validator_name`, `validator_address`|
+| `tron_validator_watcher_latest_block_processed_by_block_watcher`  | The latest block processed by the block watcher             | Gauge       | - |
+| `tron_validator_watcher_missed_blocks_total`                      | Total number of blocks missed by the validator              | CounterVec  | `validator_name`, `validator_address`|
+| `tron_validator_watcher_proposed_blocks_total`                    | Total number of blocks proposed by the validator            | CounterVec  | `validator_name`, `validator_address`|
+| `tron_validator_watcher_round_progress`                           | The current progress of the round                           | Gauge       | - |
+
+
 ## 🛠 Development
 
 ### Running Locally
