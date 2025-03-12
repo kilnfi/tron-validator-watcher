@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE_NAME: tron-validator-watcher
+
+jobs:
+  vars:
+    runs-on: ubuntu-latest
+    outputs:
+      image_name: ${{ steps.set-image-name.outputs.image_name }}
+    steps:
+      - name: Set Image Name
+        id: set-image-name
+        run: echo "image_name=${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
+
+  images:
+    needs:
+      - vars
+    strategy:
+      matrix:
+        os:
+          - linux
+        arch:
+          - amd64
+          - arm64
+    uses: ./.github/workflows/reusable-image-build.yaml
+    with:
+      target_os: ${{ matrix.os }}
+      target_arch: ${{ matrix.arch }}
+      runs_on: ubuntu-latest
+      image_name: ${{ needs.vars.outputs.image_name }}
