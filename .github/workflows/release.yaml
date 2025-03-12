@@ -94,7 +94,7 @@ jobs:
           fi
 
           CGO_ENABLED=1 GOOS=$OS_NAME GOARCH=$ARCH_NAME \
-          go build -ldflags="-s -w" -o ${OUTPUT_DIR}/${{ env.BINARY_NAME }} main.go
+          go build -ldflags="-s -w" -o ${OUTPUT_DIR}/${{ env.BINARY_NAME }} cmd/watcher/main.go
           tar -czvf ${OUTPUT_DIR}/${ARCHIVE_NAME} -C ${OUTPUT_DIR} ${{ env.BINARY_NAME }}
         env:
           OS_NAME: ${{ steps.export-variables.outputs.os_name }}
