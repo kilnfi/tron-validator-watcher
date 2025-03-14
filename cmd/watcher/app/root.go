@@ -109,6 +109,9 @@ func start(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get latest block: %w", err)
 	}
+	epoch := tron.GetEpochID(block)
+
+	logger.Infof("Current Epoch ID: %d", epoch)
 	logger.Infof("Latest Block Number: %d", block.BlockHeader.RawData.Number)
 	logger.Infof("Latest Block Timestamp (ms): %d", block.BlockHeader.RawData.Timestamp)
 
