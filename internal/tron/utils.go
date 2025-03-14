@@ -51,6 +51,10 @@ func GetFirstBlockNum(ctx context.Context, client *Client, blockNum int64, block
 	return targetBlock, nil
 }
 
+func GetEpochID(block *Block) int {
+	return int(block.BlockHeader.RawData.Timestamp / (RoundDuration * 1000))
+}
+
 // ConvertAddressToHex converts a Base58 address to a hex address by following the
 // specs from Tron network
 func ConvertAddressToHex(address string) string {

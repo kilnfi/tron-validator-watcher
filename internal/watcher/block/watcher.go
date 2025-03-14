@@ -18,6 +18,7 @@ type BlockWatcher struct {
 	logger             *logrus.Logger
 	refreshInterval    int
 	roundProgress      int
+	epoch              int
 	metrics            *Collection
 }
 
@@ -57,13 +58,15 @@ func NewBlockWatcher(options ...WatcherOptionFunc) (*BlockWatcher, error) {
 		bw.startBlock = block
 	}
 
+	bw.epoch = tron.GetEpochID(bw.startBlock)
+
 	return bw, nil
 }
 
 func (bw *BlockWatcher) Start(ctx context.Context) error {
 	// filter out only block producers validators
 	bw.filteredValidators = bw.getBlockProducers()
-	bw.metrics.InitMetrics(bw.filteredValidators)
+	bw.metrics.InitMetrics(bw.epoch, bw.filteredValidators)
 	for _, validator := range bw.filteredValidators {
 		bw.logger.Infof("🥇 Validator %s is ranked #%d", validator.AccountName, validator.WitnessInfo.Rank)
 		bw.metrics.UpdateBlockProducerInfo(validator.AccountName, validator.Address, validator.WitnessInfo.Rank)
@@ -101,6 +104,7 @@ func (bw *BlockWatcher) start(ctx context.Context) error {
 		bw.logger.WithFields(
 			logrus.Fields{
 				"block":   bid,
+				"epoch":   bw.epoch,
 				"service": "block-watcher",
 			},
 		).Infof("📦 Processing block #%d (progress=%d/%d slots)", bid, progress, tron.RoundDuration)
@@ -219,8 +223,8 @@ func (bw *BlockWatcher) handleSlotLeader(block *tron.Block, proposer string, acc
 			"service":        "block-watcher",
 		}).Infof("✅ Our Validator %s proposed a block", account.AccountName)
 
-		bw.metrics.UpdateProposedBlock(account.AccountName, account.Address)
-		bw.metrics.UpdateConsecutiveMissedBlock(account.AccountName, account.Address, true)
+		bw.metrics.UpdateProposedBlock(bw.epoch, account.AccountName, account.Address)
+		bw.metrics.UpdateConsecutiveMissedBlock(bw.epoch, account.AccountName, account.Address, true)
 	} else {
 		bw.logger.WithFields(logrus.Fields{
 			"validator_name": account.AccountName,
@@ -229,8 +233,8 @@ func (bw *BlockWatcher) handleSlotLeader(block *tron.Block, proposer string, acc
 			"service":        "block-watcher",
 		}).Infof("❌ Our Validator %s missed a block", account.AccountName)
 
-		bw.metrics.UpdateMissedBlock(account.AccountName, account.Address)
-		bw.metrics.UpdateConsecutiveMissedBlock(account.AccountName, account.Address, false)
+		bw.metrics.UpdateMissedBlock(bw.epoch, account.AccountName, account.Address)
+		bw.metrics.UpdateConsecutiveMissedBlock(bw.epoch, account.AccountName, account.Address, false)
 	}
 }
 
@@ -250,7 +254,8 @@ func (bw *BlockWatcher) handleRoundChanged(ctx context.Context, block *tron.Bloc
 		bw.metrics.UpdateBlockProducerInfo(validator.AccountName, validator.Address, validator.WitnessInfo.Rank)
 	}
 
-	bw.metrics.InitMetrics(bw.filteredValidators)
+	bw.epoch = tron.GetEpochID(block)
+	bw.metrics.InitMetrics(bw.epoch, bw.filteredValidators)
 
 	time.Sleep(3 * time.Second)
 	nextBlock, err := bw.tronClient.Network.GetBlockByNumber(ctx, block.BlockHeader.RawData.Number+1)

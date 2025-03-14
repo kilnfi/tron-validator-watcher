@@ -200,3 +200,33 @@ func TestConvertAddressToBase58(t *testing.T) {
 		})
 	}
 }
+
+func TestGetEpochID(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		input    *Block
+		expected int
+	}{
+		{
+			name: "Return_No_Error_When_Valid_Block",
+			input: &Block{
+				BlockHeader: BlockHeader{
+					RawData: BlockHeaderRawData{
+						Timestamp: 1741932000000,
+					},
+				},
+			},
+			expected: 80645,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			epochID := GetEpochID(c.input)
+			require.Equal(t, c.expected, epochID)
+		})
+	}
+}

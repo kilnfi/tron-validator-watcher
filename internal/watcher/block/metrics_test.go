@@ -56,8 +56,8 @@ func TestUpdateProposedBlock(t *testing.T) {
 	collection := NewCollection()
 	collection.MustRegister(registry)
 
-	collection.ProposedBlocks.WithLabelValues("test", "fakeaddress").Add(0)
-	collection.UpdateProposedBlock("test", "fakeaddress")
+	collection.ProposedBlocks.WithLabelValues("100", "test", "fakeaddress").Add(0)
+	collection.UpdateProposedBlock(100, "test", "fakeaddress")
 	expectedMetrics, err := os.Open("testdata/proposed_block.metrics")
 	if err != nil {
 		t.Fatal(err)
@@ -75,8 +75,8 @@ func TestUpdateMissedBlock(t *testing.T) {
 	collection := NewCollection()
 	collection.MustRegister(registry)
 
-	collection.MissedBlocks.WithLabelValues("test", "fakeaddress").Add(0)
-	collection.UpdateMissedBlock("test", "fakeaddress")
+	collection.MissedBlocks.WithLabelValues("100", "test", "fakeaddress").Add(0)
+	collection.UpdateMissedBlock(100, "test", "fakeaddress")
 	expectedMetrics, err := os.Open("testdata/missed_block.metrics")
 	if err != nil {
 		t.Fatal(err)
@@ -94,8 +94,8 @@ func TestUpdateConsecutiveMissedBlock(t *testing.T) {
 	collection := NewCollection()
 	collection.MustRegister(registry)
 
-	collection.ConsecutiveMissedBlocks.WithLabelValues("test", "fakeaddress").Add(0)
-	collection.UpdateConsecutiveMissedBlock("test", "fakeaddress", false)
+	collection.ConsecutiveMissedBlocks.WithLabelValues("100", "test", "fakeaddress").Add(0)
+	collection.UpdateConsecutiveMissedBlock(100, "test", "fakeaddress", false)
 	expectedMetrics, err := os.Open("testdata/consecutive_missed_blocks.metrics")
 	if err != nil {
 		t.Fatal(err)
@@ -124,6 +124,24 @@ func TestUpdateBlockProducerInfo(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestUpdateEpoch(t *testing.T) {
+	t.Parallel()
+
+	registry := prometheus.NewRegistry()
+	collection := NewCollection()
+	collection.MustRegister(registry)
+
+	collection.UpdateEpoch(100)
+	expectedMetrics, err := os.Open("testdata/epoch.metrics")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer expectedMetrics.Close()
+
+	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_epoch")
+	require.NoError(t, err)
+}
+
 func TestInitMetrics(t *testing.T) {
 	t.Parallel()
 
@@ -148,7 +166,7 @@ func TestInitMetrics(t *testing.T) {
 		},
 	}
 
-	collection.InitMetrics(validators)
+	collection.InitMetrics(100, validators)
 
 	metrics, err := registry.Gather()
 	require.NoError(t, err)
@@ -193,7 +211,7 @@ func TestNewCollection(t *testing.T) {
 			},
 		},
 	}
-	collection.InitMetrics(validators)
+	collection.InitMetrics(100, validators)
 
 	metrics, err := registry.Gather()
 	if err != nil {
