@@ -17,9 +17,3 @@ tron_validator_watcher_missed_blocks_total{epoch="100",validator_address="val2.a
 # TYPE tron_validator_watcher_proposed_blocks_total counter
 tron_validator_watcher_proposed_blocks_total{epoch="100",validator_address="val1.address",validator_name="val1"} 0
 tron_validator_watcher_proposed_blocks_total{epoch="100",validator_address="val2.address",validator_name="val2"} 0
-# HELP tron_validator_watcher_round_progress The current progress of the round
-# TYPE tron_validator_watcher_round_progress gauge
-tron_validator_watcher_round_progress 0
-# HELP tron_validator_watcher_epoch The current epoch
-# TYPE tron_validator_watcher_epoch gauge
-tron_validator_watcher_epoch 100

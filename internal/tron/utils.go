@@ -10,6 +10,9 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 )
 
+// GetFirstBlockNum returns the first block of the current round based on the given block number and timestamp.
+// The function uses a binary search to find the first block of the round efficiently.
+// The function returns an error if the first block of the round cannot be found.
 func GetFirstBlockNum(ctx context.Context, client *Client, blockNum int64, blockTimestamp int64) (*Block, error) {
 	var targetBlock *Block
 
@@ -51,8 +54,17 @@ func GetFirstBlockNum(ctx context.Context, client *Client, blockNum int64, block
 	return targetBlock, nil
 }
 
+// GetEpochID returns the epoch ID based on the given block
 func GetEpochID(block *Block) int {
 	return int(block.BlockHeader.RawData.Timestamp / (RoundDuration * 1000))
+}
+
+// GetNextRound returns the timestamp of the next round based on the given block
+func GetNextRound(block *Block) int64 {
+	epoch := GetEpochID(block)
+	nextRound := int64(epoch+1) * int64(RoundDuration*1000)
+
+	return nextRound
 }
 
 // ConvertAddressToHex converts a Base58 address to a hex address by following the
@@ -66,6 +78,8 @@ func ConvertAddressToHex(address string) string {
 	return hexAddress
 }
 
+// ConvertAddressToBase58 converts a hex address to a Base58 address by following the
+// specs from Tron network
 func ConvertAddressToBase58(address string) (string, error) {
 	decodedHex, err := hex.DecodeString(address)
 	if err != nil {
@@ -84,6 +98,7 @@ func ConvertAddressToBase58(address string) (string, error) {
 	return encodedBase58, nil
 }
 
+// doubleHashSHA256 returns the double SHA256 hash of the given data
 func doubleHashSHA256(data []byte) []byte {
 	hash0 := sha256.Sum256(data)     // Premier hash
 	hash1 := sha256.Sum256(hash0[:]) // Deuxième hash

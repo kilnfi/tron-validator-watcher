@@ -12,25 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUpdateRoundProgress(t *testing.T) {
-	t.Parallel()
-
-	registry := prometheus.NewRegistry()
-	collection := NewCollection()
-	collection.MustRegister(registry)
-
-	collection.UpdateRoundProgress(15)
-
-	expectedMetrics, err := os.Open("testdata/round_progress.metrics")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer expectedMetrics.Close()
-
-	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_round_progress")
-	require.NoError(t, err)
-}
-
 func TestUpdateLatestBlockProcessed(t *testing.T) {
 	t.Parallel()
 
@@ -121,24 +102,6 @@ func TestUpdateBlockProducerInfo(t *testing.T) {
 	defer expectedMetrics.Close()
 
 	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_block_producer_info")
-	require.NoError(t, err)
-}
-
-func TestUpdateEpoch(t *testing.T) {
-	t.Parallel()
-
-	registry := prometheus.NewRegistry()
-	collection := NewCollection()
-	collection.MustRegister(registry)
-
-	collection.UpdateEpoch(100)
-	expectedMetrics, err := os.Open("testdata/epoch.metrics")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer expectedMetrics.Close()
-
-	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_epoch")
 	require.NoError(t, err)
 }
 

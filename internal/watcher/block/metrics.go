@@ -8,16 +8,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
+// Collection represents a collection of Prometheus metrics used by the block watcher.
 type Collection struct {
 	ProposedBlocks                     *prometheus.CounterVec
 	MissedBlocks                       *prometheus.CounterVec
 	ConsecutiveMissedBlocks            *prometheus.CounterVec
 	LatestBlockProcessedByBlockWatcher prometheus.Gauge
 	BlockProducerInfo                  *prometheus.GaugeVec
-	RoundProgress                      prometheus.Gauge
-	Epoch                              prometheus.Gauge
 }
 
+// NewCollection creates a new Collection with all the metrics needed by the block watcher.
 func NewCollection() *Collection {
 	return &Collection{
 		ProposedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -45,19 +45,11 @@ func NewCollection() *Collection {
 			Name:      "block_producer_info",
 			Help:      "Block producer info",
 		}, []string{"validator_name", "validator_address", "rank"}),
-		RoundProgress: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "tron_validator_watcher",
-			Name:      "round_progress",
-			Help:      "The current progress of the round",
-		}),
-		Epoch: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "tron_validator_watcher",
-			Name:      "epoch",
-			Help:      "The current epoch",
-		}),
 	}
 }
 
+// MustRegister registers all the metrics in the Collection with the provided Prometheus registry.
+// This method should be called to ensure that all metrics are properly registered and can be scraped by Prometheus.
 func (c *Collection) MustRegister(registry *prometheus.Registry) {
 	registry.MustRegister(
 		collectors.NewGoCollector(),
@@ -67,18 +59,15 @@ func (c *Collection) MustRegister(registry *prometheus.Registry) {
 		c.ConsecutiveMissedBlocks,
 		c.LatestBlockProcessedByBlockWatcher,
 		c.BlockProducerInfo,
-		c.RoundProgress,
-		c.Epoch,
 	)
 }
 
+// InitMetrics initializes the metrics for the given epoch and validators.
 func (c *Collection) InitMetrics(epoch int, validators tron.AccountList) {
 	c.ProposedBlocks.Reset()
 	c.MissedBlocks.Reset()
 	c.ConsecutiveMissedBlocks.Reset()
 	c.BlockProducerInfo.Reset()
-	c.RoundProgress.Set(0)
-	c.Epoch.Set(float64(epoch))
 	c.LatestBlockProcessedByBlockWatcher.Set(0)
 
 	for _, validator := range validators {
@@ -89,18 +78,23 @@ func (c *Collection) InitMetrics(epoch int, validators tron.AccountList) {
 	}
 }
 
-func (c *Collection) UpdateRoundProgress(progress float64) {
-	c.RoundProgress.Set(progress)
-}
+// UpdateLatestBlockProcessed updates the latest block processed by the block watcher.
 func (c *Collection) UpdateLatestBlockProcessed(blockNumber float64) {
 	c.LatestBlockProcessedByBlockWatcher.Set(blockNumber)
 }
+
+// UpdateProposedBlock updates the number of proposed blocks by the validator.
 func (c *Collection) UpdateProposedBlock(epoch int, validatorName, validatorAddress string) {
 	c.ProposedBlocks.WithLabelValues(strconv.Itoa(epoch), validatorName, validatorAddress).Inc()
 }
+
+// UpdateMissedBlock updates the number of missed blocks by the validator.
 func (c *Collection) UpdateMissedBlock(epoch int, validatorName, validatorAddress string) {
 	c.MissedBlocks.WithLabelValues(strconv.Itoa(epoch), validatorName, validatorAddress).Inc()
 }
+
+// UpdateConsecutiveMissedBlock updates the number of consecutive missed blocks by the validator.
+// If reset is true, the counter is reset to 0.
 func (c *Collection) UpdateConsecutiveMissedBlock(epoch int, validatorName, validatorAddress string, reset bool) {
 	if reset {
 		c.ConsecutiveMissedBlocks.WithLabelValues(strconv.Itoa(epoch), validatorName, validatorAddress).Add(0)
@@ -108,10 +102,8 @@ func (c *Collection) UpdateConsecutiveMissedBlock(epoch int, validatorName, vali
 	}
 	c.ConsecutiveMissedBlocks.WithLabelValues(strconv.Itoa(epoch), validatorName, validatorAddress).Inc()
 }
+
+// UpdateBlockProducerInfo updates the block producer info.
 func (c *Collection) UpdateBlockProducerInfo(validatorName, validatorAddress string, rank int) {
 	c.BlockProducerInfo.WithLabelValues(validatorName, validatorAddress, strconv.Itoa(rank)).Set(1)
-}
-
-func (c *Collection) UpdateEpoch(epoch float64) {
-	c.Epoch.Set(epoch)
 }

@@ -8,6 +8,9 @@ http-server:
   port: 8080
 block-watcher:
   enabled: true
-  refresh-interval: 10
+  refresh-interval: 60
+network-watcher:
+  enabled: true
+  refresh-interval: 60
 rpc:
   endpoint: https://localhost:8090

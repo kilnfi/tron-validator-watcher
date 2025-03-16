@@ -15,6 +15,7 @@ import (
 	httpserver "github.com/kilnfi/tron-validator-watcher/internal/server/http"
 	"github.com/kilnfi/tron-validator-watcher/internal/tron"
 	blockwatcher "github.com/kilnfi/tron-validator-watcher/internal/watcher/block"
+	networkwatcher "github.com/kilnfi/tron-validator-watcher/internal/watcher/network"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -54,7 +55,9 @@ With this tool, you can track:
 	cmd.Flags().StringVarP(&configFile, "config-file", "", "", "config file (default is config.yml)")
 	cmd.Flags().StringP("log-level", "", "info", "log level (debug, info, warn, error, fatal, panic)")
 	cmd.Flags().BoolP("block-watcher-enabled", "", true, "enable block watcher")
-	cmd.Flags().IntP("block-watcher-refresh-interval", "", 30, "block watcher refresh interval in seconds")
+	cmd.Flags().IntP("block-watcher-refresh-interval", "", 60, "block watcher refresh interval in seconds")
+	cmd.Flags().BoolP("network-watcher-enabled", "", true, "enable network watcher")
+	cmd.Flags().IntP("network-watcher-refresh-interval", "", 60, "network watcher refresh interval in seconds")
 	cmd.Flags().StringP("rpc-endpoint", "", "", "block watcher API URL")
 	cmd.Flags().StringP("http-server-host", "", "", "HTTP server host")
 	cmd.Flags().IntP("http-server-port", "", 8080, "HTTP server port")
@@ -67,6 +70,12 @@ With this tool, you can track:
 	}
 	if err := viper.BindPFlag("block-watcher.refresh-interval", cmd.Flags().Lookup("block-watcher-refresh-interval")); err != nil {
 		logger.Fatalf("failed to bind block-watcher-refresh-interval flag: %v", err)
+	}
+	if err := viper.BindPFlag("network-watcher.enabled", cmd.Flags().Lookup("network-watcher-enabled")); err != nil {
+		logger.Fatalf("failed to bind network-watcher-enabled flag: %v", err)
+	}
+	if err := viper.BindPFlag("network-watcher.refresh-interval", cmd.Flags().Lookup("network-watcher-refresh-interval")); err != nil {
+		logger.Fatalf("failed to bind network-watcher-refresh-interval flag: %v", err)
 	}
 	if err := viper.BindPFlag("rpc.endpoint", cmd.Flags().Lookup("rpc-endpoint")); err != nil {
 		logger.Fatalf("failed to bind rpc-endpoint flag: %v", err)
@@ -96,7 +105,9 @@ func start(cmd *cobra.Command, args []string) error {
 	// Create a new Prometheus registry and register the metrics
 	registry := prometheus.NewRegistry()
 	blockMetrics := blockwatcher.NewCollection()
+	networkMetrics := networkwatcher.NewCollection()
 	blockMetrics.MustRegister(registry)
+	networkMetrics.MustRegister(registry)
 
 	// Create Tron client
 	tronClient, err := createTronClient()
@@ -149,6 +160,25 @@ func start(cmd *cobra.Command, args []string) error {
 		startBlockWatcher(ctx, eg, bw)
 	}
 
+	// Starts Network watcher
+	if cfg.NetworkWatcher.Enabled {
+		watcher, err := networkwatcher.NewNetworkWatcher(
+			networkwatcher.WithTronClient(tronClient),
+			networkwatcher.WithLogger(logger),
+			networkwatcher.WithRefreshInterval(
+				cfg.NetworkWatcher.RefreshInterval,
+			),
+			networkwatcher.WithMetrics(networkMetrics),
+		)
+
+		if err != nil {
+			return fmt.Errorf("failed to create NetworkWatcher: %v", err)
+		}
+
+		startNetworkWatcher(ctx, eg, watcher)
+	}
+
+	// Wait for the program to be interrupted
 	<-ctx.Done()
 	logger.Info("shutting down")
 
@@ -236,6 +266,18 @@ func startBlockWatcher(ctx context.Context, eg *errgroup.Group, watcher *blockwa
 
 		if err := watcher.Start(ctx); err != nil {
 			return fmt.Errorf("unable to start block watcher: %w", err)
+		}
+		return nil
+	})
+}
+
+// startNetworkWatcher starts the network watcher.
+func startNetworkWatcher(ctx context.Context, eg *errgroup.Group, watcher *networkwatcher.NetworkWatcher) {
+	eg.Go(func() error {
+		logger.Info("starting network watcher")
+
+		if err := watcher.Start(ctx); err != nil {
+			return fmt.Errorf("unable to start network watcher: %w", err)
 		}
 		return nil
 	})

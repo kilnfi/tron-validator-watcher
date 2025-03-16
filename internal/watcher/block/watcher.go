@@ -84,7 +84,7 @@ func (bw *BlockWatcher) Start(ctx context.Context) error {
 			if err := bw.start(ctx); err != nil {
 				return fmt.Errorf("BlockWatcher: failed to start: %w", err)
 			}
-			bw.logger.Infof("😴 Sleeping %ds before next iteration...", bw.refreshInterval)
+			bw.logger.WithField("service", "block-watcher").Infof("😴 Sleeping %ds before next iteration...", bw.refreshInterval)
 		}
 	}
 }
@@ -158,7 +158,6 @@ func (bw *BlockWatcher) start(ctx context.Context) error {
 	}
 
 	bw.metrics.UpdateLatestBlockProcessed(float64(block.BlockHeader.RawData.Number))
-	bw.metrics.UpdateRoundProgress(float64(progress))
 
 	return nil
 }

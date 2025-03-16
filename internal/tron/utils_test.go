@@ -230,3 +230,33 @@ func TestGetEpochID(t *testing.T) {
 		})
 	}
 }
+
+func TestGetNextRound(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		input    *Block
+		expected int64
+	}{
+		{
+			name: "Return_No_Error_When_Valid_Block",
+			input: &Block{
+				BlockHeader: BlockHeader{
+					RawData: BlockHeaderRawData{
+						Timestamp: 1741932000000,
+					},
+				},
+			},
+			expected: 1741953600000,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			nextRound := GetNextRound(c.input)
+			require.Equal(t, c.expected, nextRound)
+		})
+	}
+}

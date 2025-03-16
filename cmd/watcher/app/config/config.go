@@ -3,11 +3,12 @@ package config
 import "fmt"
 
 type Config struct {
-	Validators   []Validator
-	BlockWatcher BlockWatcherConfig `mapstructure:"block-watcher"`
-	RPC          RPCConfig          `mapstructure:"rpc"`
-	LogLevel     string             `mapstructure:"log-level"`
-	HTTPServer   HTTPServerConfig   `mapstructure:"http-server"`
+	Validators     []Validator
+	BlockWatcher   BlockWatcherConfig   `mapstructure:"block-watcher"`
+	NetworkWatcher NetworkWatcherConfig `mapstructure:"network-watcher"`
+	RPC            RPCConfig            `mapstructure:"rpc"`
+	LogLevel       string               `mapstructure:"log-level"`
+	HTTPServer     HTTPServerConfig     `mapstructure:"http-server"`
 }
 
 type Validator struct {
@@ -17,6 +18,11 @@ type Validator struct {
 }
 
 type BlockWatcherConfig struct {
+	Enabled         bool `mapstructure:"enabled"`
+	RefreshInterval int  `mapstructure:"refresh-interval"`
+}
+
+type NetworkWatcherConfig struct {
 	Enabled         bool `mapstructure:"enabled"`
 	RefreshInterval int  `mapstructure:"refresh-interval"`
 }
