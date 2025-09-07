@@ -1,6 +1,6 @@
 module github.com/kilnfi/tron-validator-watcher
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/btcsuite/btcutil v1.0.2
@@ -9,7 +9,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/sync v0.12.0
+	golang.org/x/sync v0.17.0
 )
 
 require (
