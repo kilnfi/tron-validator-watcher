@@ -7,25 +7,11 @@ on:
 
 permissions:
   contents: write
-  packages: write
 
 env:
-  IMAGE_NAME: tron-validator-watcher
   BINARY_NAME: tron-validator-watcher
-  CHART_NAME: tron-validator-watcher
-  CHART_DIRECTORY: charts
-  REGISTRY: oci://ghcr.io/rayanebel/charts
 
 jobs:
-  vars:
-    runs-on: ubuntu-latest
-    outputs:
-      image_name: ${{ steps.set-image-name.outputs.image_name }}
-    steps:
-      - name: Set Image Name
-        id: set-image-name
-        run: echo "image_name=${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
-
   binaries:
     strategy:
       matrix:
@@ -109,58 +95,30 @@ jobs:
         env:
           DIRECTORY: ${{ steps.build.outputs.output_dir }}
 
-  images:
-    needs:
-      - binaries
-      - vars
-    strategy:
-      matrix:
-        os:
-          - linux
-        arch:
-          - amd64
-          - arm64
-    uses: ./.github/workflows/reusable-image-build.yaml
-    with:
-      target_os: ${{ matrix.os }}
-      target_arch: ${{ matrix.arch }}
-      runs_on: ubuntu-latest
-      image_name: ${{ needs.vars.outputs.image_name }}
-
-  helm-chart:
-    if: false
+  image-tag:
     runs-on: ubuntu-latest
-    needs: images
+    outputs:
+      tag: ${{ steps.determine-tag.outputs.tag }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Determine Image Tag
+      id: determine-tag
+      run: |
+        if [ "${{ github.ref_type }}" == "tag" ]; then
+            echo "Setting image tag to ${{ github.ref_name }}"
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        else
+            TAG="${{ github.ref_name }}-$(echo ${{ github.sha }} | cut -c1-7)"
+            echo "Setting image tag to $TAG"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+        fi
 
-      - name: Set up Helm
-        uses: azure/setup-helm@v4.3.0
-        with:
-          version: v3.16.4
-
-      - name: Verify Chart Version
-        run: |
-          TAG=$(echo ${{ github.ref_name }} | sed 's/v//')
-          CHART_VERSION=$(yq -r .version ${{ env.CHART_DIRECTORY }}/${{ env.CHART_NAME }}/Chart.yaml)
-          if [ "$TAG" != "${CHART_VERSION}" ]; then
-            echo "Version mismatch: release tag ${TAG} does not match Chart.yaml version ${CHART_VERSION}"
-            exit 1
-          fi
-          echo "CHART_VERSION=$CHART_VERSION" >> $GITHUB_ENV
-
-      - name: Helm Registry Login
-        run: |
-          echo ${{ secrets.GITHUB_TOKEN }} | helm registry login ghcr.io --username ${{ env.USERNAME }} --password-stdin
-        env:
-          USERNAME: kilnfi
-
-      - name: 'Helm Package'
-        id: helm-package
-        run: |
-          helm package ${{ env.CHART_DIRECTORY }}/${{ env.CHART_NAME }} --version $CHART_VERSION
-
-      - name: 'Helm Push'
-        run: |
-          helm push ./${{ env.CHART_NAME }}-$CHART_VERSION.tgz ${{ env.REGISTRY }}
+  build-image:
+    needs:
+      - image-tag
+    uses: kilnfi/nakamoto/.github/workflows/docker-build-and-push.ci.yml@main
+    with:
+      dockerfile: Dockerfile
+      tags: tron-validator-watcher:${{ needs.image-tag.outputs.tag }}
+      platforms: linux/amd64,linux/arm64
+      runner: fixed-egress-16c-64g
+      manage_ecr_repository: false
