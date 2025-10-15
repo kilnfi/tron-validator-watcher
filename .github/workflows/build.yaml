@@ -6,35 +6,33 @@ on:
       - main
 
 permissions:
-  contents: write
-  packages: write
-
-env:
-  IMAGE_NAME: tron-validator-watcher
+  contents: read
 
 jobs:
-  vars:
+  image-tag:
     runs-on: ubuntu-latest
     outputs:
-      image_name: ${{ steps.set-image-name.outputs.image_name }}
+      tag: ${{ steps.determine-tag.outputs.tag }}
     steps:
-      - name: Set Image Name
-        id: set-image-name
-        run: echo "image_name=${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
+    - name: Determine Image Tag
+      id: determine-tag
+      run: |
+        if [ "${{ github.ref_type }}" == "tag" ]; then
+            echo "Setting image tag to ${{ github.ref_name }}"
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        else
+            TAG="${{ github.ref_name }}-$(echo ${{ github.sha }} | cut -c1-7)"
+            echo "Setting image tag to $TAG"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+        fi
 
-  images:
+  build-image:
     needs:
-      - vars
-    strategy:
-      matrix:
-        os:
-          - linux
-        arch:
-          - amd64
-          - arm64
-    uses: ./.github/workflows/reusable-image-build.yaml
+      - image-tag
+    uses: kilnfi/nakamoto/.github/workflows/docker-build-and-push.ci.yml@main
     with:
-      target_os: ${{ matrix.os }}
-      target_arch: ${{ matrix.arch }}
-      runs_on: ubuntu-latest
-      image_name: ${{ needs.vars.outputs.image_name }}
+      dockerfile: Dockerfile
+      tags: tron-validator-watcher:${{ needs.image-tag.outputs.tag }}
+      platforms: linux/amd64,linux/arm64
+      runner: fixed-egress-16c-64g
+      manage_ecr_repository: false
