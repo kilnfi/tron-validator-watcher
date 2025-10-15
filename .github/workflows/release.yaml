@@ -6,7 +6,8 @@ on:
       - '*'
 
 permissions:
-  contents: write
+  contents: read
+  id-token: write
 
 env:
   BINARY_NAME: tron-validator-watcher
