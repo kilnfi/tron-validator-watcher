@@ -11,7 +11,7 @@ import (
 type Collection struct {
 	ProposedBlocks                     *prometheus.CounterVec
 	MissedBlocks                       *prometheus.CounterVec
-	ConsecutiveMissedBlocks            *prometheus.CounterVec
+	ConsecutiveMissedBlocks            *prometheus.GaugeVec
 	LatestBlockProcessedByBlockWatcher prometheus.Gauge
 	BlockProducerInfo                  *prometheus.GaugeVec
 	RoundProgress                      prometheus.Gauge
@@ -30,10 +30,10 @@ func NewCollection() *Collection {
 			Name:      "missed_blocks_total",
 			Help:      "Total number of blocks missed by the validator",
 		}, []string{"epoch", "validator_name", "validator_address"}),
-		ConsecutiveMissedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
+		ConsecutiveMissedBlocks: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: "tron_validator_watcher",
-			Name:      "consecutive_missed_blocks_total",
-			Help:      "Total number of consecutive blocks missed by the validator",
+			Name:      "consecutive_missed_blocks",
+			Help:      "Current number of consecutive blocks missed by the validator (resets to 0 when a block is proposed)",
 		}, []string{"epoch", "validator_name", "validator_address"}),
 		LatestBlockProcessedByBlockWatcher: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "tron_validator_watcher",
@@ -84,7 +84,7 @@ func (c *Collection) InitMetrics(epoch int, validators tron.AccountList) {
 	for _, validator := range validators {
 		c.ProposedBlocks.WithLabelValues(strconv.Itoa(epoch), validator.AccountName, validator.Address).Add(0)
 		c.MissedBlocks.WithLabelValues(strconv.Itoa(epoch), validator.AccountName, validator.Address).Add(0)
-		c.ConsecutiveMissedBlocks.WithLabelValues(strconv.Itoa(epoch), validator.AccountName, validator.Address).Add(0)
+		c.ConsecutiveMissedBlocks.WithLabelValues(strconv.Itoa(epoch), validator.AccountName, validator.Address).Set(0)
 		c.BlockProducerInfo.WithLabelValues(validator.AccountName, validator.Address, strconv.Itoa(validator.WitnessInfo.Rank)).Set(0)
 	}
 }
@@ -103,7 +103,7 @@ func (c *Collection) UpdateMissedBlock(epoch int, validatorName, validatorAddres
 }
 func (c *Collection) UpdateConsecutiveMissedBlock(epoch int, validatorName, validatorAddress string, reset bool) {
 	if reset {
-		c.ConsecutiveMissedBlocks.WithLabelValues(strconv.Itoa(epoch), validatorName, validatorAddress).Add(0)
+		c.ConsecutiveMissedBlocks.WithLabelValues(strconv.Itoa(epoch), validatorName, validatorAddress).Set(0)
 		return
 	}
 	c.ConsecutiveMissedBlocks.WithLabelValues(strconv.Itoa(epoch), validatorName, validatorAddress).Inc()
