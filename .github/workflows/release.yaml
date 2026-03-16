@@ -4,13 +4,19 @@ on:
   push:
     tags:
       - '*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
 
 permissions:
-  contents: read
-  id-token: write
+  contents: write
+  packages: write
 
 env:
   BINARY_NAME: tron-validator-watcher
+  IMAGE_NAME: tron-validator-watcher
 
 jobs:
   binaries:
@@ -62,15 +68,9 @@ jobs:
       - name: Build ${{matrix.os}}-${{matrix.arch}} binary
         id: build
         run: |
-          OUTPUT_NAME="${{ env.BINARY_NAME }}_${{ github.ref_name }}_${OS_NAME}_${ARCH_NAME}"
+          OUTPUT_NAME="${{ env.BINARY_NAME }}_${{ github.event.inputs.tag || github.ref_name }}_${OS_NAME}_${ARCH_NAME}"
           OUTPUT_DIR=dist/${OUTPUT_NAME}
           ARCHIVE_NAME="${OUTPUT_NAME}.tar.gz"
-
-          # debug
-          echo "OUTPUT_NAME=${OUTPUT_NAME}"
-          echo "DIR=${OUTPUT_DIR}"
-          echo "ARCH=${ARCH_NAME}"
-          echo "ARCH2=${{ env.ARCH_NAME}}"
 
           echo "output_dir=${OUTPUT_DIR}" >> $GITHUB_OUTPUT
           mkdir -p ${OUTPUT_DIR}
@@ -86,40 +86,151 @@ jobs:
         env:
           OS_NAME: ${{ steps.export-variables.outputs.os_name }}
 
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ steps.export-variables.outputs.os_name }}-${{ matrix.arch }}
+          path: "${{ steps.build.outputs.output_dir }}/*.tar.gz"
+          if-no-files-found: error
+          retention-days: 1
+
+  release_binaries:
+    name: Upload binaries to GitHub Release
+    needs: binaries
+    runs-on: fixed-egress-4c-16g
+    steps:
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: binary-*
+          merge-multiple: true
+
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: "${{ env.DIRECTORY }}/*.tar.gz"
-          tag: ${{ github.ref_name }}
+          file: "dist/*.tar.gz"
+          tag: ${{ github.event.inputs.tag || github.ref_name }}
           file_glob: true
-        env:
-          DIRECTORY: ${{ steps.build.outputs.output_dir }}
+          overwrite: true
 
   image-tag:
-    runs-on: ubuntu-latest
+    runs-on: fixed-egress-4c-16g
     outputs:
       tag: ${{ steps.determine-tag.outputs.tag }}
     steps:
-    - name: Determine Image Tag
-      id: determine-tag
-      run: |
-        if [ "${{ github.ref_type }}" == "tag" ]; then
-            echo "Setting image tag to ${{ github.ref_name }}"
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-        else
-            TAG="${{ github.ref_name }}-$(echo ${{ github.sha }} | cut -c1-7)"
-            echo "Setting image tag to $TAG"
-            echo "tag=$TAG" >> $GITHUB_OUTPUT
-        fi
+      - name: Determine Image Tag
+        id: determine-tag
+        run: |
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+              echo "Setting image tag to ${{ github.event.inputs.tag || github.ref_name }}"
+              echo "tag=${{ github.event.inputs.tag || github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+              TAG="${{ github.event.inputs.tag || github.ref_name }}-$(echo ${{ github.sha }} | cut -c1-7)"
+              echo "Setting image tag to $TAG"
+              echo "tag=$TAG" >> $GITHUB_OUTPUT
+          fi
 
-  build-image:
+  images:
     needs:
       - image-tag
-    uses: kilnfi/nakamoto/.github/workflows/docker-build-and-push.ci.yml@main
-    with:
-      dockerfile: Dockerfile
-      tags: tron-validator-watcher:${{ needs.image-tag.outputs.tag }}
-      platforms: linux/amd64,linux/arm64
-      runner: fixed-egress-16c-64g
-      manage_ecr_repository: false
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - amd64
+          - arm64
+    runs-on: fixed-egress-4c-16g
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build & Push Container Image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          labels: |-
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.name=${{ env.IMAGE_NAME }}
+            org.opencontainers.image.version=${{ needs.image-tag.outputs.tag }}
+            org.opencontainers.image.authors=contact@kiln.fi
+          platforms: linux/${{ matrix.arch }}
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |-
+            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ needs.image-tag.outputs.tag }}-${{ matrix.arch }}
+
+      - name: Export digest
+        shell: bash
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-linux-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: fixed-egress-4c-16g
+    needs:
+      - image-tag
+      - images
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        shell: bash
+        run: |
+          docker buildx imagetools create \
+            -t "${REGISTRY_IMAGE}:latest" \
+            -t "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}" \
+            $(printf "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}-%s " amd64 arm64)
+        env:
+          REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+
+      - name: Inspect image
+        shell: bash
+        run: |
+          docker buildx imagetools inspect "${REGISTRY_IMAGE}:latest"
+          docker buildx imagetools inspect "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}"
+        env:
+          REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
