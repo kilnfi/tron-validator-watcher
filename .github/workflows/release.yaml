@@ -21,76 +21,59 @@ env:
 jobs:
   binaries:
     strategy:
+      fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-        arch:
-          - amd64
-          - arm64
-    runs-on: ${{ matrix.os }}
+        include:
+          - runner: fixed-egress-4c-16g
+            os_name: linux
+            arch: amd64
+          - runner: fixed-egress-4c-16g
+            os_name: linux
+            arch: arm64
+          - runner: macos-latest
+            os_name: darwin
+            arch: amd64
+          - runner: macos-latest
+            os_name: darwin
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     env:
       ARCH_NAME: ${{ matrix.arch }}
+      OS_NAME: ${{ matrix.os_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Export Variables
-        id: export-variables
-        run: |
-          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            echo "os_name=linux" >> $GITHUB_OUTPUT
-          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
-            echo "os_name=darwin" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Install dependencies
-        run: |
-          if [ "$OS_NAME" == "linux" ]; then
-            sudo apt-get update
-            if [ "${{ matrix.arch }}" == "amd64" ]; then
-              sudo apt-get install -y build-essential
-            elif [ "${{ matrix.arch }}" == "arm64" ]; then
-              sudo apt install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-            fi
-          elif [ "$OS_NAME" == "darwin" ]; then
-            brew update
-            brew install sqlite
-          fi
-        env:
-          OS_NAME: ${{ steps.export-variables.outputs.os_name }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: 1.26
 
-      - name: Build ${{matrix.os}}-${{matrix.arch}} binary
+      - name: Build ${{ matrix.os_name }}-${{ matrix.arch }} binary
         id: build
+        shell: bash
         run: |
+          set -euo pipefail
+
           OUTPUT_NAME="${{ env.BINARY_NAME }}_${{ github.event.inputs.tag || github.ref_name }}_${OS_NAME}_${ARCH_NAME}"
-          OUTPUT_DIR=dist/${OUTPUT_NAME}
+          OUTPUT_DIR="dist/${OUTPUT_NAME}"
           ARCHIVE_NAME="${OUTPUT_NAME}.tar.gz"
+          ARCHIVE_PATH="${OUTPUT_DIR}/${ARCHIVE_NAME}"
 
-          echo "output_dir=${OUTPUT_DIR}" >> $GITHUB_OUTPUT
-          mkdir -p ${OUTPUT_DIR}
+          echo "archive_path=${ARCHIVE_PATH}" >> "$GITHUB_OUTPUT"
+          mkdir -p "${OUTPUT_DIR}"
 
-          if [ "${OS_NAME}" = "linux" ] && [ "${ARCH_NAME}" = "arm64" ]; then
-            export CC=aarch64-linux-gnu-gcc
-            export CXX=aarch64-linux-gnu-g++
-          fi
+          CGO_ENABLED=0 GOOS="$OS_NAME" GOARCH="$ARCH_NAME" \
+            go build -ldflags="-s -w" -o "${OUTPUT_DIR}/${{ env.BINARY_NAME }}" cmd/watcher/main.go
 
-          CGO_ENABLED=1 GOOS=$OS_NAME GOARCH=$ARCH_NAME \
-          go build -ldflags="-s -w" -o ${OUTPUT_DIR}/${{ env.BINARY_NAME }} cmd/watcher/main.go
-          tar -czvf ${OUTPUT_DIR}/${ARCHIVE_NAME} -C ${OUTPUT_DIR} ${{ env.BINARY_NAME }}
-        env:
-          OS_NAME: ${{ steps.export-variables.outputs.os_name }}
+          tar -czvf "${ARCHIVE_PATH}" -C "${OUTPUT_DIR}" "${{ env.BINARY_NAME }}"
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ steps.export-variables.outputs.os_name }}-${{ matrix.arch }}
-          path: "${{ steps.build.outputs.output_dir }}/*.tar.gz"
+          name: binary-${{ matrix.os_name }}-${{ matrix.arch }}
+          path: ${{ steps.build.outputs.archive_path }}
           if-no-files-found: error
           retention-days: 1
 
