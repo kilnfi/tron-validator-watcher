@@ -1,19 +1,24 @@
 package http
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"github.com/kilnfi/tron-validator-watcher/internal/status"
 )
 
 // Handler represents the HTTP handlers for the server
 type Handler struct {
 	logger *slog.Logger
+	store  *status.Store
 }
 
 // NewHandler returns a new Handler
-func NewHandler(logger *slog.Logger) *Handler {
+func NewHandler(logger *slog.Logger, store *status.Store) *Handler {
 	return &Handler{
 		logger: logger,
+		store:  store,
 	}
 }
 
@@ -40,4 +45,19 @@ func (h *Handler) LiveProbe(w http.ResponseWriter, _ *http.Request) {
 func (h *Handler) ReadyProbe(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("Health OK"))
+}
+
+// Status returns the current status of the watcher as JSON
+func (h *Handler) Status(w http.ResponseWriter, _ *http.Request) {
+	if h.store == nil {
+		http.Error(w, "store not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if err := json.NewEncoder(w).Encode(h.store.Get()); err != nil {
+		h.logger.Error("failed to encode status", slog.String("error", err.Error()))
+	}
 }

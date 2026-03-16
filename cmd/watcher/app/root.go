@@ -13,7 +13,9 @@ import (
 	"github.com/kilnfi/tron-validator-watcher/cmd/watcher/app/config"
 	clog "github.com/kilnfi/tron-validator-watcher/internal/logger"
 	httpserver "github.com/kilnfi/tron-validator-watcher/internal/server/http"
+	"github.com/kilnfi/tron-validator-watcher/internal/status"
 	"github.com/kilnfi/tron-validator-watcher/internal/tron"
+	"github.com/kilnfi/tron-validator-watcher/internal/ui"
 	blockwatcher "github.com/kilnfi/tron-validator-watcher/internal/watcher/block"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
@@ -98,6 +100,9 @@ func start(cmd *cobra.Command, args []string) error {
 	blockMetrics := blockwatcher.NewCollection()
 	blockMetrics.MustRegister(registry)
 
+	// Create the status store (shared between block watcher and HTTP server)
+	statusStore := status.NewStore()
+
 	// Create Tron client
 	tronClient, err := createTronClient()
 	if err != nil {
@@ -127,7 +132,7 @@ func start(cmd *cobra.Command, args []string) error {
 	validators := fetchAccountInfo(tronClient)
 
 	// Starts HTTP server
-	if err := startHTTPServer(eg, registry); err != nil {
+	if err := startHTTPServer(eg, registry, statusStore); err != nil {
 		return fmt.Errorf("failed to start http server: %w", err)
 	}
 
@@ -142,6 +147,7 @@ func start(cmd *cobra.Command, args []string) error {
 				cfg.BlockWatcher.RefreshInterval,
 			),
 			blockwatcher.WithMetrics(blockMetrics),
+			blockwatcher.WithStatusStore(statusStore),
 		)
 		if err != nil {
 			return fmt.Errorf("failed to create BlockWatcher: %v", err)
@@ -205,13 +211,15 @@ func fetchAccountInfo(tronClient *tron.Client) []tron.Account {
 }
 
 // startHTTPServer starts the HTTP server.
-func startHTTPServer(eg *errgroup.Group, registry *prometheus.Registry) error {
+func startHTTPServer(eg *errgroup.Group, registry *prometheus.Registry, store *status.Store) error {
 	var err error
 
 	server, err = httpserver.New(
 		registry,
 		httpserver.WithHost(cfg.HTTPServer.Host),
 		httpserver.WithPort(cfg.HTTPServer.Port),
+		httpserver.WithStore(store),
+		httpserver.WithUI(ui.StaticFiles),
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create http server: %w", err)

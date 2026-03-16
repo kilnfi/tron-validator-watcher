@@ -1,11 +1,15 @@
 # 🚀 Tron Validator Watcher
 
-**Tron Validator Watcher** is a powerful Prometheus Exporter designed to help you efficiently monitor your validators on the Tron blockchain.
-
+**Tron Validator Watcher** is a powerful Prometheus Exporter designed to help you efficiently monitor your validators on the Tron blockchain. It comes with a built-in real-time web dashboard for instant visibility into block production performance.
 
 ## 🌟 Features
 
-✅ Track and analyze validators' block production on the Tron blockchain with periodic polling.
+- **Real-time dashboard** — React-based UI showing live block production stats, missed blocks, validator rankings, and recent activity
+- **Per-validator metrics** — Track proposed/missed blocks, consecutive misses, and next scheduled slot per validator
+- **Missed block detection** — Detects skipped slots by checking for timestamp gaps between consecutive blocks
+- **Prometheus metrics** — Full set of Prometheus counters and gauges for alerting and Grafana dashboards
+- **Multi-validator support** — Monitor multiple Tron Super Representatives simultaneously
+- **Round awareness** — Tracks epoch changes, refreshes validator ranks each round
 
 ## 📋 Prerequisites
 
@@ -14,7 +18,8 @@ To use **Tron Validator Watcher**, you need:
 - A running **Tron RPC node**, either:
   - A local node, fully synchronized with the network.
   - A remote provider such as **QuickNode**, **TronGrid**, or other Tron RPC services.
-- **Go 1.23+** installed _(for development purposes only)_.
+- **Go 1.24+** installed _(for development purposes only)_.
+- **Node.js 18+** _(only if building the frontend from source)_
 - **Make**
 - **Docker** if you want to build local images
 
@@ -23,15 +28,16 @@ To use **Tron Validator Watcher**, you need:
 ### Manual Installation (Development)
 
 ```sh
-git clone https://github.com/yourusername/tron-validator-watcher.git
+git clone https://github.com/kilnfi/tron-validator-watcher.git
 cd tron-validator-watcher
 make build
 ```
 
-## Releases
+### Releases
+
 With each release, we provide precompiled binaries for various platforms, making it easy to install and use Tron Validator Watcher without needing to build from source.
 
-You can find the latest releases here: [Tron Validator Watcher Releases](https://github.com/kilnfi/tron-validator-watcher/release).
+You can find the latest releases here: [Tron Validator Watcher Releases](https://github.com/kilnfi/tron-validator-watcher/releases).
 
 ## 🚀 Usage
 
@@ -57,6 +63,7 @@ Run the tool with:
 ```
 
 ### Available Flags
+
 | Flag                                  | Type   | Description                                          | Default      |
 | ------------------------------------- | ------ | ---------------------------------------------------- | ------------ |
 | `--config-file`                       | string | Path to the configuration file                       | `config.yml` |
@@ -74,7 +81,7 @@ Modify the `config.example.yaml` file and rename it to `config.yaml`. Below is a
 | Option                           | Description                                                | Example                      |
 | -------------------------------- | ---------------------------------------------------------- | ---------------------------- |
 | `validators`                     | List of validators to monitor                              | See below                    |
-| `validators.address`             | The blockchain address of the validator                    | `TABC123...XYZ`              |
+| `validators.address`             | The blockchain address of the validator (Base58)           | `TABC123...XYZ`              |
 | `validators.name`                | A human-readable name for the validator                    | `"Validator Name"`           |
 | `validators.instance`            | The instance identifier for tracking                       | `"tron-validator-mainnet-0"` |
 | `log-level`                      | Logging verbosity level (`debug`, `info`, `warn`, `error`) | `"debug"`                    |
@@ -91,7 +98,7 @@ validators:
   - address: "your_validator_address"
     name: "Validator Name"
     instance: "tron-validator-mainnet-0"
-log-level: "debug"
+log-level: "info"
 http-server:
   host: "0.0.0.0"
   port: 8080
@@ -102,26 +109,102 @@ rpc:
   endpoint: "https://localhost:8090"
 ```
 
+## 🖥️ Dashboard
+
+Tron Validator Watcher includes a built-in web dashboard accessible at `http://localhost:8080`.
+
+![Dashboard](docs/screenshots/ui.png)
+
+### What the dashboard shows
+
+- **Overview stats** — Current epoch, round progress, total proposed/missed blocks, active SR count
+- **Per-validator cards** — Each monitored validator shows:
+  - SR rank with color coding (top 9 / top 18 / top 27)
+  - Blocks proposed and missed this round
+  - Consecutive missed blocks
+  - Next scheduled block slot time
+  - Vote count
+  - Link to TronScan
+- **Activity feed** — Live stream of recent blocks with proposer name, block number, and timestamp; missed slots highlighted in red
+- **Flash animation** — Validator cards flash red on a new missed block
+
+### Building the frontend
+
+The frontend is a React + TypeScript app (Vite + Tailwind CSS). A pre-built version is embedded in the binary via Go's `embed` package. To rebuild it after making changes:
+
+```sh
+cd frontend
+npm install
+npm run build
+```
+
+The compiled output goes to `internal/ui/dist/`, which is then embedded into the binary at compile time.
+
+### API endpoint
+
+The dashboard is powered by the `/api/status` JSON endpoint. You can also query it directly:
+
+```sh
+curl http://localhost:8080/api/status
+```
+
+Example response:
+
+```json
+{
+  "epoch": 12345,
+  "round_progress": 3600,
+  "round_duration": 21600,
+  "next_round_in_ms": 54000000,
+  "proposed_total": 42,
+  "missed_total": 1,
+  "consec_missed": 0,
+  "total_srs": 27,
+  "validators": [
+    {
+      "name": "MyValidator",
+      "address": "TXyz...",
+      "rank": 5,
+      "proposed": 42,
+      "missed": 1,
+      "consec_missed": 0,
+      "is_active": true,
+      "vote_count": 1234567890,
+      "next_slot_in_ms": 9000
+    }
+  ],
+  "recent_blocks": [
+    {
+      "number": 68000001,
+      "proposer": "MyValidator",
+      "address": "TXyz...",
+      "is_ours": true,
+      "missed": false,
+      "timestamp": 1710000000000
+    }
+  ]
+}
+```
+
 ## 🌡️ Metrics
 
-This exporter provides the following set of metrics, which can be used to build a dashboard or create alerts.
+This exporter provides the following Prometheus metrics, available at `http://localhost:8080/metrics`.
 
-| Metric Name                                                       | Description          | Type | Labels |
-| ----------------------------------------------------------------- | -------------------- |---- | --- |
+| Metric Name                                                       | Description                                                 | Type        | Labels                                        |
+| ----------------------------------------------------------------- | ----------------------------------------------------------- | ----------- | --------------------------------------------- |
 | `tron_validator_watcher_block_producer_info`                      | Block producer info                                         | GaugeVec    | `validator_name`, `validator_address`, `rank` |
-| `tron_validator_watcher_consecutive_missed_blocks_total`          | Total number of consecutive blocks missed by the validator  | GaugeVec    | `validator_name`, `validator_address`|
-| `tron_validator_watcher_latest_block_processed_by_block_watcher`  | The latest block processed by the block watcher             | Gauge       | - |
-| `tron_validator_watcher_missed_blocks_total`                      | Total number of blocks missed by the validator              | CounterVec  | `validator_name`, `validator_address`|
-| `tron_validator_watcher_proposed_blocks_total`                    | Total number of blocks proposed by the validator            | CounterVec  | `validator_name`, `validator_address`|
-| `tron_validator_watcher_round_progress`                           | The current progress of the round                           | Gauge       | - |
-
+| `tron_validator_watcher_consecutive_missed_blocks_total`          | Total number of consecutive blocks missed by the validator  | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_latest_block_processed_by_block_watcher`  | The latest block processed by the block watcher             | Gauge       | —                                             |
+| `tron_validator_watcher_missed_blocks_total`                      | Total number of blocks missed by the validator              | CounterVec  | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_proposed_blocks_total`                    | Total number of blocks proposed by the validator            | CounterVec  | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_round_progress`                           | The current progress within the round (seconds)             | Gauge       | —                                             |
 
 ## 🛠 Development
 
 ### Running Locally
 
 ```sh
-git clone https://github.com/yourusername/tron-validator-watcher.git
+git clone https://github.com/kilnfi/tron-validator-watcher.git
 cd tron-validator-watcher
 make run
 ```

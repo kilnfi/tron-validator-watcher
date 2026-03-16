@@ -2,9 +2,16 @@
 generate:
 	@mockery
 
+.PHONY: build-frontend
+build-frontend:
+	@cd frontend && npm ci && npm run build
+
 .PHONY: build
 build: generate
 	@go build -ldflags="-s -w" -o bin/tron-validator-watcher cmd/watcher/main.go
+
+.PHONY: build-all
+build-all: generate build-frontend build
 
 .PHONY: run
 run: generate

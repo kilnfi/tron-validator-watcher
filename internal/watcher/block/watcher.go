@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kilnfi/tron-validator-watcher/internal/status"
 	"github.com/kilnfi/tron-validator-watcher/internal/tron"
 
 	"github.com/sirupsen/logrus"
@@ -20,6 +21,7 @@ type BlockWatcher struct {
 	roundProgress          int
 	epoch                  int
 	metrics                *Collection
+	store                  *status.Store
 	lastProcessedTimestamp int64
 }
 
@@ -72,6 +74,20 @@ func (bw *BlockWatcher) Start(ctx context.Context) error {
 	for _, validator := range bw.filteredValidators {
 		bw.logger.Infof("🥇 Validator %s is ranked #%d", validator.AccountName, validator.WitnessInfo.Rank)
 		bw.metrics.UpdateBlockProducerInfo(validator.AccountName, validator.Address, validator.WitnessInfo.Rank)
+	}
+
+	if bw.store != nil {
+		bw.store.SetValidators(bw.filteredValidators)
+		bw.store.ResetEpoch(bw.epoch)
+		if witnesses, err := bw.tronClient.Account.ListWitnesses(); err == nil {
+			activeCount := 0
+			for _, w := range witnesses.Witnesses {
+				if w.IsJobs {
+					activeCount++
+				}
+			}
+			bw.store.SetTotalSRs(activeCount)
+		}
 	}
 
 	bw.roundProgress = int((bw.startBlock.BlockHeader.RawData.Timestamp / 1000) % tron.RoundDuration)
@@ -137,6 +153,16 @@ func (bw *BlockWatcher) start(ctx context.Context) error {
 				}).Infof("❌ Our Validator %s missed a block (skipped slot)", slotAccount.AccountName)
 				bw.metrics.UpdateMissedBlock(bw.epoch, slotAccount.AccountName, slotAccount.Address)
 				bw.metrics.UpdateConsecutiveMissedBlock(bw.epoch, slotAccount.AccountName, slotAccount.Address, false)
+				if bw.store != nil {
+					bw.store.AddMissedBlock(status.RecentBlock{
+						Number:    currentBlock.BlockHeader.RawData.Number,
+						Proposer:  slotAccount.AccountName,
+						Address:   slotAccount.Address,
+						IsOurs:    true,
+						Missed:    true,
+						Timestamp: ts,
+					})
+				}
 			}
 		}
 		bw.lastProcessedTimestamp = currentTimestamp
@@ -176,6 +202,16 @@ func (bw *BlockWatcher) start(ctx context.Context) error {
 					}).Infof("✅ Our Validator %s proposed a block (fallback detection)", v.AccountName)
 					bw.metrics.UpdateProposedBlock(bw.epoch, v.AccountName, v.Address)
 					bw.metrics.UpdateConsecutiveMissedBlock(bw.epoch, v.AccountName, v.Address, true)
+					if bw.store != nil {
+						bw.store.AddProposedBlock(status.RecentBlock{
+							Number:    currentBlock.BlockHeader.RawData.Number,
+							Proposer:  v.AccountName,
+						Address:   v.Address,
+							IsOurs:    true,
+							Missed:    false,
+							Timestamp: currentBlock.BlockHeader.RawData.Timestamp,
+						})
+					}
 					break
 				}
 			}
@@ -187,6 +223,16 @@ func (bw *BlockWatcher) start(ctx context.Context) error {
 					"block_slot":     progress,
 					"service":        "block-watcher",
 				}).Infof("🏆 Validator %s proposed a block", proposerInfo.AccountName)
+				if bw.store != nil {
+					bw.store.AddOtherBlock(status.RecentBlock{
+						Number:    currentBlock.BlockHeader.RawData.Number,
+						Proposer:  proposerInfo.AccountName,
+					Address:   proposerAddress,
+						IsOurs:    false,
+						Missed:    false,
+						Timestamp: currentBlock.BlockHeader.RawData.Timestamp,
+					})
+				}
 			}
 		}
 	}
@@ -264,6 +310,16 @@ func (bw *BlockWatcher) handleSlotLeader(block *tron.Block, proposer string, acc
 
 		bw.metrics.UpdateProposedBlock(bw.epoch, account.AccountName, account.Address)
 		bw.metrics.UpdateConsecutiveMissedBlock(bw.epoch, account.AccountName, account.Address, true)
+		if bw.store != nil {
+			bw.store.AddProposedBlock(status.RecentBlock{
+				Number:    block.BlockHeader.RawData.Number,
+				Proposer:  account.AccountName,
+				Address:   account.Address,
+				IsOurs:    true,
+				Missed:    false,
+				Timestamp: block.BlockHeader.RawData.Timestamp,
+			})
+		}
 	} else {
 		bw.logger.WithFields(logrus.Fields{
 			"validator_name": account.AccountName,
@@ -274,6 +330,16 @@ func (bw *BlockWatcher) handleSlotLeader(block *tron.Block, proposer string, acc
 
 		bw.metrics.UpdateMissedBlock(bw.epoch, account.AccountName, account.Address)
 		bw.metrics.UpdateConsecutiveMissedBlock(bw.epoch, account.AccountName, account.Address, false)
+		if bw.store != nil {
+			bw.store.AddMissedBlock(status.RecentBlock{
+				Number:    block.BlockHeader.RawData.Number,
+				Proposer:  account.AccountName,
+				Address:   account.Address,
+				IsOurs:    true,
+				Missed:    true,
+				Timestamp: block.BlockHeader.RawData.Timestamp,
+			})
+		}
 	}
 }
 
@@ -295,6 +361,19 @@ func (bw *BlockWatcher) handleRoundChanged(ctx context.Context, block *tron.Bloc
 
 	bw.epoch = tron.GetEpochID(block)
 	bw.metrics.InitMetrics(bw.epoch, bw.filteredValidators)
+	if bw.store != nil {
+		bw.store.SetValidators(bw.filteredValidators)
+		bw.store.ResetEpoch(bw.epoch)
+		if witnesses, err := bw.tronClient.Account.ListWitnesses(); err == nil {
+			activeCount := 0
+			for _, w := range witnesses.Witnesses {
+				if w.IsJobs {
+					activeCount++
+				}
+			}
+			bw.store.SetTotalSRs(activeCount)
+		}
+	}
 
 	time.Sleep(3 * time.Second)
 	nextBlock, err := bw.tronClient.Network.GetBlockByNumber(ctx, block.BlockHeader.RawData.Number+1)

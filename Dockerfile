@@ -1,12 +1,25 @@
-#  Builder
+ARG NODE=node:22-alpine
 ARG BUILDER=golang:1.24.1-alpine
 ARG RUNNER=alpine:3.21
 
+# Stage 1: Build frontend
+FROM ${NODE} AS frontend-builder
+
+WORKDIR /workspace/frontend
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Build Go binary (embeds the frontend dist)
 FROM ${BUILDER} AS builder
 
 WORKDIR /workspace
 
 COPY . .
+COPY --from=frontend-builder /workspace/internal/ui/dist ./internal/ui/dist
 
 RUN apk --no-cache add gcc musl-dev
 
@@ -15,6 +28,7 @@ RUN go mod download \
 
 RUN go build -v -o /usr/local/bin/tron-validator-watcher cmd/watcher/main.go
 
+# Stage 3: Minimal runtime image
 FROM ${RUNNER}
 
 WORKDIR /home/tron
