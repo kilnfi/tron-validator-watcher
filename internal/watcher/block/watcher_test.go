@@ -85,6 +85,7 @@ func TestStart(t *testing.T) {
 
 		// context to automatically close the watcher
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.AfterFunc(12*time.Second, cancel)
 		}()
@@ -175,6 +176,7 @@ func TestStart(t *testing.T) {
 
 		// context to automatically close the watcher
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.AfterFunc(12*time.Second, cancel)
 		}()
@@ -282,6 +284,7 @@ func TestStart(t *testing.T) {
 
 		// context to automatically close the watcher
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.AfterFunc(12*time.Second, cancel)
 		}()
@@ -364,6 +367,7 @@ func TestStart(t *testing.T) {
 
 		// context to automatically close the watcher
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.AfterFunc(12*time.Second, cancel)
 		}()
@@ -449,6 +453,7 @@ func TestStart(t *testing.T) {
 
 		// context to automatically close the watcher
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.AfterFunc(12*time.Second, cancel)
 		}()
@@ -535,6 +540,7 @@ func TestStart(t *testing.T) {
 
 		// context to automatically close the watcher
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.AfterFunc(15*time.Second, cancel)
 		}()
@@ -631,6 +637,7 @@ func TestStart(t *testing.T) {
 
 		// context to automatically close the watcher
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.AfterFunc(12*time.Second, cancel)
 		}()
@@ -735,6 +742,7 @@ func TestStart(t *testing.T) {
 
 		// context to automatically close the watcher
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.AfterFunc(12*time.Second, cancel)
 		}()
@@ -819,6 +827,7 @@ func TestStart(t *testing.T) {
 
 		// context to automatically close the watcher
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
 			time.AfterFunc(12*time.Second, cancel)
 		}()

@@ -1,5 +1,7 @@
+version: "2"
+
 linters:
-  disable-all: true
+  default: none
   enable:
     - asasalint
     - asciicheck
@@ -12,13 +14,9 @@ linters:
     - copyloopvar
     - errchkjson
     - goconst
-    - gofmt
     - sloglint
     - goheader
-    - goimports
-    - goprintffuncname
     - gosec
-    - gosimple
     - gocritic
     - govet
     - ginkgolinter
@@ -32,11 +30,9 @@ linters:
     - nolintlint
     - revive
     - staticcheck
-    - stylecheck
     - testifylint
     - tparallel
     - thelper
-    - typecheck
     - unconvert
     - unparam
     - unused
@@ -47,14 +43,18 @@ linters:
     - promlinter
     - prealloc
     - contextcheck
+  settings:
+    gocritic:
+      disabled-checks: [captLocal]
+    revive:
+      rules:
+        - name: blank-imports
+          disabled: true
 
-linters-settings:
-  gocritic:
-    disabled-checks: [captLocal]
-  revive:
-    rules:
-      - name: blank-imports
-        disabled: true
-issues: {}
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
 run:
   timeout: 5m

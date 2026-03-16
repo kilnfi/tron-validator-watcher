@@ -24,7 +24,6 @@ frontend/node_modules/
 
 # Frontend build output (embedded into Go binary at compile time)
 internal/ui/dist/
-!internal/ui/dist/.gitkeep
 
 # Dependency directories (remove the comment below to include it)
 bin/

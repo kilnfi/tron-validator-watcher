@@ -118,7 +118,7 @@ func (c *NetworkClientImpl) GetLatestBlock(ctx context.Context) (*Block, error) 
 	if err != nil {
 		return nil, fmt.Errorf("GetLatestBlock - HTTP request failed: %v", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
 		resBody, _ := io.ReadAll(res.Body)
 		return nil, fmt.Errorf("GetLatestBlock: HTTP request failed (status: %d): %s)", res.StatusCode, string(resBody))
@@ -164,7 +164,7 @@ func (c *NetworkClientImpl) GetBlockByNumber(ctx context.Context, number int64) 
 	if err != nil {
 		return nil, fmt.Errorf("GetBlockByNumber: HTTP request failed: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
 		resBody, _ := io.ReadAll(res.Body)
 		return nil, fmt.Errorf("GetBlockByNumber: HTTP request failed (status: %d): %s", res.StatusCode, string(resBody))

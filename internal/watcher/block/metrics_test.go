@@ -25,7 +25,7 @@ func TestUpdateRoundProgress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer expectedMetrics.Close()
+	defer func() { _ = expectedMetrics.Close() }()
 
 	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_round_progress")
 	require.NoError(t, err)
@@ -43,7 +43,7 @@ func TestUpdateLatestBlockProcessed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer expectedMetrics.Close()
+	defer func() { _ = expectedMetrics.Close() }()
 
 	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_latest_block_processed_by_block_watcher")
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestUpdateProposedBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer expectedMetrics.Close()
+	defer func() { _ = expectedMetrics.Close() }()
 
 	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_proposed_blocks_total")
 	require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestUpdateMissedBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer expectedMetrics.Close()
+	defer func() { _ = expectedMetrics.Close() }()
 
 	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_missed_blocks_total")
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestUpdateConsecutiveMissedBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer expectedMetrics.Close()
+	defer func() { _ = expectedMetrics.Close() }()
 
 	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_consecutive_missed_blocks_total")
 	require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestUpdateBlockProducerInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer expectedMetrics.Close()
+	defer func() { _ = expectedMetrics.Close() }()
 
 	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_block_producer_info")
 	require.NoError(t, err)
@@ -136,7 +136,7 @@ func TestUpdateEpoch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer expectedMetrics.Close()
+	defer func() { _ = expectedMetrics.Close() }()
 
 	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_epoch")
 	require.NoError(t, err)
@@ -182,7 +182,7 @@ func TestInitMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer expectedMetrics.Close()
+	defer func() { _ = expectedMetrics.Close() }()
 
 	err = testutil.GatherAndCompare(registry, expectedMetrics, metricNames...)
 	require.NoError(t, err)
