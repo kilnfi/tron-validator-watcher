@@ -3,10 +3,12 @@ package http
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/kilnfi/tron-validator-watcher/internal/status"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -24,6 +26,8 @@ type Server struct {
 	server *http.Server
 
 	registry *prometheus.Registry
+	store    *status.Store
+	uiFS     fs.FS
 
 	options *options
 }
@@ -49,6 +53,11 @@ func New(
 		}
 	}
 
+	var store *status.Store
+	if options.store != nil {
+		store = options.store
+	}
+
 	router := http.NewServeMux()
 	addr := fmt.Sprintf("%s:%d", options.host, options.port)
 
@@ -62,6 +71,8 @@ func New(
 			WriteTimeout: options.writeTimeout,
 		},
 		registry: registry,
+		store:    store,
+		uiFS:     options.uiFS,
 		options:  options,
 	}
 
@@ -87,10 +98,19 @@ func (s *Server) Stop(ctx context.Context) error {
 }
 
 func (s *Server) registerRoutes() {
-	handler := NewHandler(s.logger)
+	handler := NewHandler(s.logger, s.store)
 
-	s.router.HandleFunc("GET /", handler.Default)
 	s.router.HandleFunc("GET /livez", handler.LiveProbe)
 	s.router.HandleFunc("GET /readyz", handler.ReadyProbe)
 	s.router.Handle("GET /metrics", promhttp.HandlerFor(s.registry, promhttp.HandlerOpts{}))
+	s.router.HandleFunc("GET /api/status", handler.Status)
+
+	if s.uiFS != nil {
+		distFS, err := fs.Sub(s.uiFS, "dist")
+		if err == nil {
+			s.router.Handle("GET /", http.FileServer(http.FS(distFS)))
+			return
+		}
+	}
+	s.router.HandleFunc("GET /", handler.Default)
 }

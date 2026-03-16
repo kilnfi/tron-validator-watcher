@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#0b0f1a] text-slate-200 antialiased;
+  }
+}
+
+@layer utilities {
+  @keyframes flash-red {
+    0%   { background-color: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); }
+    100% { background-color: transparent; border-color: transparent; }
+  }
+  .animate-flash-red {
+    animation: flash-red 1.5s ease-out forwards;
+  }
+}

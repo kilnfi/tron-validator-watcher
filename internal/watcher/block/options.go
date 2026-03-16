@@ -1,6 +1,7 @@
 package blockwatcher
 
 import (
+	"github.com/kilnfi/tron-validator-watcher/internal/status"
 	"github.com/kilnfi/tron-validator-watcher/internal/tron"
 	"github.com/sirupsen/logrus"
 )
@@ -45,6 +46,13 @@ func WithRefreshInterval(interval int) WatcherOptionFunc {
 func WithMetrics(metrics *Collection) WatcherOptionFunc {
 	return func(c *BlockWatcher) error {
 		c.metrics = metrics
+		return nil
+	}
+}
+
+func WithStatusStore(store *status.Store) WatcherOptionFunc {
+	return func(c *BlockWatcher) error {
+		c.store = store
 		return nil
 	}
 }
