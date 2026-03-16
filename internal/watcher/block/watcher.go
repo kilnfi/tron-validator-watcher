@@ -11,15 +11,16 @@ import (
 )
 
 type BlockWatcher struct {
-	startBlock         *tron.Block
-	tronClient         *tron.Client
-	validators         tron.AccountList
-	filteredValidators tron.AccountList
-	logger             *logrus.Logger
-	refreshInterval    int
-	roundProgress      int
-	epoch              int
-	metrics            *Collection
+	startBlock             *tron.Block
+	tronClient             *tron.Client
+	validators             tron.AccountList
+	filteredValidators     tron.AccountList
+	logger                 *logrus.Logger
+	refreshInterval        int
+	roundProgress          int
+	epoch                  int
+	metrics                *Collection
+	lastProcessedTimestamp int64
 }
 
 func NewBlockWatcher(options ...WatcherOptionFunc) (*BlockWatcher, error) {
@@ -59,6 +60,7 @@ func NewBlockWatcher(options ...WatcherOptionFunc) (*BlockWatcher, error) {
 	}
 
 	bw.epoch = tron.GetEpochID(bw.startBlock)
+	bw.lastProcessedTimestamp = bw.startBlock.BlockHeader.RawData.Timestamp
 
 	return bw, nil
 }
@@ -122,6 +124,23 @@ func (bw *BlockWatcher) start(ctx context.Context) error {
 			}
 		}
 
+		// Detect missed slots: if the gap between the last processed block and the current block
+		// is greater than BlockTime, some slots were skipped (missed blocks).
+		currentTimestamp := currentBlock.BlockHeader.RawData.Timestamp
+		for ts := bw.lastProcessedTimestamp + tron.BlockTime*1000; ts < currentTimestamp; ts += tron.BlockTime * 1000 {
+			isLeaderForSlot, slotAccount := bw.isLeader(ts)
+			if isLeaderForSlot {
+				bw.logger.WithFields(logrus.Fields{
+					"validator_name": slotAccount.AccountName,
+					"expected_slot":  ts / 1000,
+					"service":        "block-watcher",
+				}).Infof("❌ Our Validator %s missed a block (skipped slot)", slotAccount.AccountName)
+				bw.metrics.UpdateMissedBlock(bw.epoch, slotAccount.AccountName, slotAccount.Address)
+				bw.metrics.UpdateConsecutiveMissedBlock(bw.epoch, slotAccount.AccountName, slotAccount.Address, false)
+			}
+		}
+		bw.lastProcessedTimestamp = currentTimestamp
+
 		proposerAddress, err := tron.ConvertAddressToBase58(currentBlock.BlockHeader.RawData.WitnessAddress)
 		if err != nil {
 			return fmt.Errorf("BlockWatcher: failed to convert address to base58: %w", err)
@@ -142,13 +161,33 @@ func (bw *BlockWatcher) start(ctx context.Context) error {
 		if isLeader {
 			bw.handleSlotLeader(currentBlock, proposerAddress, account)
 		} else {
-			bw.logger.WithFields(logrus.Fields{
-				"validator_name": proposerInfo.AccountName,
-				"block":          currentBlock.BlockHeader.RawData.Number,
-				"block_time":     (currentBlock.BlockHeader.RawData.Timestamp / 1000),
-				"block_slot":     progress,
-				"service":        "block-watcher",
-			}).Infof("🏆 Validator %s proposed a block", proposerInfo.AccountName)
+			// isLeader() may miss our validator if NumberOfValidators doesn't match
+			// the real network size. As a fallback, always check if the proposer
+			// is one of our validators by address comparison.
+			ours := false
+			for _, v := range bw.filteredValidators {
+				if proposerAddress == v.Address {
+					ours = true
+					bw.logger.WithFields(logrus.Fields{
+						"validator_name": v.AccountName,
+						"block":          currentBlock.BlockHeader.RawData.Number,
+						"block_time":     (currentBlock.BlockHeader.RawData.Timestamp / 1000),
+						"service":        "block-watcher",
+					}).Infof("✅ Our Validator %s proposed a block (fallback detection)", v.AccountName)
+					bw.metrics.UpdateProposedBlock(bw.epoch, v.AccountName, v.Address)
+					bw.metrics.UpdateConsecutiveMissedBlock(bw.epoch, v.AccountName, v.Address, true)
+					break
+				}
+			}
+			if !ours {
+				bw.logger.WithFields(logrus.Fields{
+					"validator_name": proposerInfo.AccountName,
+					"block":          currentBlock.BlockHeader.RawData.Number,
+					"block_time":     (currentBlock.BlockHeader.RawData.Timestamp / 1000),
+					"block_slot":     progress,
+					"service":        "block-watcher",
+				}).Infof("🏆 Validator %s proposed a block", proposerInfo.AccountName)
+			}
 		}
 	}
 
@@ -263,6 +302,7 @@ func (bw *BlockWatcher) handleRoundChanged(ctx context.Context, block *tron.Bloc
 		return fmt.Errorf("BlockWatcher: failed to get next block: %v", err)
 	}
 	bw.startBlock = nextBlock
+	bw.lastProcessedTimestamp = block.BlockHeader.RawData.Timestamp
 	bw.roundProgress = 0
 
 	return nil
