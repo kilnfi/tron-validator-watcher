@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +17,7 @@ func TestDefaultHandler(t *testing.T) {
 	t.Run("Returns_No_Error_When_Endpoint_Is_Healthy", func(t *testing.T) {
 		t.Parallel()
 
-		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 		w := httptest.NewRecorder()
 
 		server, err := New(
@@ -31,7 +32,7 @@ func TestDefaultHandler(t *testing.T) {
 	t.Run("Returns_Error_When_Endpoint_Not_Exists", func(t *testing.T) {
 		t.Parallel()
 
-		r := httptest.NewRequest(http.MethodGet, "/fake", nil)
+		r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/fake", nil)
 		w := httptest.NewRecorder()
 
 		registry := prometheus.NewRegistry()
@@ -51,7 +52,7 @@ func TestLiveProbe(t *testing.T) {
 	t.Run("Returns_No_Errors_When_Endpoint_Is_Healthy", func(t *testing.T) {
 		t.Parallel()
 
-		r := httptest.NewRequest(http.MethodGet, "/livez", nil)
+		r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/livez", nil)
 		w := httptest.NewRecorder()
 
 		registry := prometheus.NewRegistry()
@@ -71,7 +72,7 @@ func TestReadyProbe(t *testing.T) {
 	t.Run("Returns_No_Errors_When_Endpoint_Is_Healthy", func(t *testing.T) {
 		t.Parallel()
 
-		r := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+		r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/readyz", nil)
 		w := httptest.NewRecorder()
 
 		registry := prometheus.NewRegistry()
@@ -91,7 +92,7 @@ func TestMetricsHandler(t *testing.T) {
 	t.Run("Returns_No_Errors_When_Endpoint_Is_Healthy", func(t *testing.T) {
 		t.Parallel()
 
-		r := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+		r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", nil)
 		w := httptest.NewRecorder()
 
 		registry := prometheus.NewRegistry()

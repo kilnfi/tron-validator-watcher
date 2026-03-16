@@ -27,7 +27,7 @@ jobs:
       ARCH_NAME: ${{ matrix.arch }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Export Variables
         id: export-variables
@@ -55,9 +55,9 @@ jobs:
           OS_NAME: ${{ steps.export-variables.outputs.os_name }}
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.24
+          go-version: 1.26
 
       - name: Build ${{matrix.os}}-${{matrix.arch}} binary
         id: build

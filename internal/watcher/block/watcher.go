@@ -206,7 +206,7 @@ func (bw *BlockWatcher) start(ctx context.Context) error {
 						bw.store.AddProposedBlock(status.RecentBlock{
 							Number:    currentBlock.BlockHeader.RawData.Number,
 							Proposer:  v.AccountName,
-						Address:   v.Address,
+							Address:   v.Address,
 							IsOurs:    true,
 							Missed:    false,
 							Timestamp: currentBlock.BlockHeader.RawData.Timestamp,
@@ -227,7 +227,7 @@ func (bw *BlockWatcher) start(ctx context.Context) error {
 					bw.store.AddOtherBlock(status.RecentBlock{
 						Number:    currentBlock.BlockHeader.RawData.Number,
 						Proposer:  proposerInfo.AccountName,
-					Address:   proposerAddress,
+						Address:   proposerAddress,
 						IsOurs:    false,
 						Missed:    false,
 						Timestamp: currentBlock.BlockHeader.RawData.Timestamp,

@@ -27,7 +27,7 @@ func TestAccountClient_GetAccount(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			// copy file content to response writer
 			_, err = io.Copy(w, file)
@@ -45,7 +45,7 @@ func TestAccountClient_GetAccount(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			// copy file content to response writer
 			_, err = io.Copy(w, file)
@@ -112,7 +112,7 @@ func TestAccountClient_GetAccount(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			// copy file content to response writer
 			_, err = io.Copy(w, file)
@@ -142,7 +142,7 @@ func TestAccountClient_GetAccount(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			// copy file content to response writer
 			_, err = io.Copy(w, file)
@@ -183,7 +183,7 @@ func TestListWitnesses(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			_, err = io.Copy(w, file)
 			if err != nil {
@@ -241,7 +241,7 @@ func TestListWitnesses(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			_, err = io.Copy(w, file)
 			if err != nil {
@@ -271,7 +271,7 @@ func TestGetWitnesses(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			_, err = io.Copy(w, file)
 			if err != nil {

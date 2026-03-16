@@ -50,7 +50,7 @@ func (c *AccountClientImpl) GetAccount(address string) (*Account, error) {
 	if err != nil {
 		return nil, fmt.Errorf("GetAccount: HTTP request failed (address: %s, error: %w)", address, err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
 		resBody, _ := io.ReadAll(res.Body)
@@ -96,7 +96,7 @@ func (c *AccountClientImpl) ListWitnesses() (*Witnesses, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ListWitnesses: HTTP request failed: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
 		resBody, _ := io.ReadAll(res.Body)

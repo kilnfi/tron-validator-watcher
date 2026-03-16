@@ -1,6 +1,6 @@
-ARG NODE=node:22-alpine
-ARG BUILDER=golang:1.24.1-alpine
-ARG RUNNER=alpine:3.21
+ARG NODE=node:24-alpine
+ARG BUILDER=golang:1.26-alpine
+ARG RUNNER=alpine:3.23
 
 # Stage 1: Build frontend
 FROM ${NODE} AS frontend-builder

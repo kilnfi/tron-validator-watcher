@@ -26,7 +26,7 @@ func TestGetLatestBlock(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			_, err = io.Copy(w, file)
 			if err != nil {
@@ -102,7 +102,7 @@ func TestGetLatestBlock(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			_, err = io.Copy(w, file)
 			if err != nil {
@@ -131,7 +131,7 @@ func TestGetBlockByNumber(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			_, err = io.Copy(w, file)
 			if err != nil {
@@ -209,7 +209,7 @@ func TestGetBlockByNumber(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			_, err = io.Copy(w, file)
 			if err != nil {
