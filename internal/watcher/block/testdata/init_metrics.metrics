@@ -2,10 +2,10 @@
 # TYPE tron_validator_watcher_block_producer_info gauge
 tron_validator_watcher_block_producer_info{rank="10",validator_address="val1.address",validator_name="val1"} 0
 tron_validator_watcher_block_producer_info{rank="20",validator_address="val2.address",validator_name="val2"} 0
-# HELP tron_validator_watcher_consecutive_missed_blocks_total Total number of consecutive blocks missed by the validator
-# TYPE tron_validator_watcher_consecutive_missed_blocks_total counter
-tron_validator_watcher_consecutive_missed_blocks_total{epoch="100",validator_address="val1.address",validator_name="val1"} 0
-tron_validator_watcher_consecutive_missed_blocks_total{epoch="100",validator_address="val2.address",validator_name="val2"} 0
+# HELP tron_validator_watcher_consecutive_missed_blocks Current number of consecutive blocks missed by the validator (resets to 0 when a block is proposed)
+# TYPE tron_validator_watcher_consecutive_missed_blocks gauge
+tron_validator_watcher_consecutive_missed_blocks{epoch="100",validator_address="val1.address",validator_name="val1"} 0
+tron_validator_watcher_consecutive_missed_blocks{epoch="100",validator_address="val2.address",validator_name="val2"} 0
 # HELP tron_validator_watcher_latest_block_processed_by_block_watcher The latest block processed by the block watcher
 # TYPE tron_validator_watcher_latest_block_processed_by_block_watcher gauge
 tron_validator_watcher_latest_block_processed_by_block_watcher 0

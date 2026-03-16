@@ -94,7 +94,7 @@ func TestUpdateConsecutiveMissedBlock(t *testing.T) {
 	collection := NewCollection()
 	collection.MustRegister(registry)
 
-	collection.ConsecutiveMissedBlocks.WithLabelValues("100", "test", "fakeaddress").Add(0)
+	collection.ConsecutiveMissedBlocks.WithLabelValues("100", "test", "fakeaddress").Set(0)
 	collection.UpdateConsecutiveMissedBlock(100, "test", "fakeaddress", false)
 	expectedMetrics, err := os.Open("testdata/consecutive_missed_blocks.metrics")
 	if err != nil {
@@ -102,7 +102,7 @@ func TestUpdateConsecutiveMissedBlock(t *testing.T) {
 	}
 	defer func() { _ = expectedMetrics.Close() }()
 
-	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_consecutive_missed_blocks_total")
+	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_consecutive_missed_blocks")
 	require.NoError(t, err)
 }
 
