@@ -18,13 +18,14 @@ import (
 func getWitnessID(t *testing.T, timeSlot int64) int64 {
 	t.Helper()
 
+	const n = 2
 	var witnessID int64
 	slot := (timeSlot - tron.GenesisBlockTime) / (tron.BlockTime * 1000)
 
 	if (timeSlot/1000)%tron.RoundDuration == 0 {
-		witnessID = ((slot - tron.MaintenanceSkipSlots) % (tron.NumberOfValidators * tron.SingleRepeat)) / tron.SingleRepeat
+		witnessID = ((slot - tron.MaintenanceSkipSlots) % (n * tron.SingleRepeat)) / tron.SingleRepeat
 	} else {
-		witnessID = (slot % (tron.NumberOfValidators * tron.SingleRepeat)) / tron.SingleRepeat
+		witnessID = (slot % (n * tron.SingleRepeat)) / tron.SingleRepeat
 	}
 
 	return witnessID + 1
@@ -102,6 +103,7 @@ func TestStart(t *testing.T) {
 		mockAccount.EXPECT().
 			GetAccount(proposerAddress).
 			Return(proposerAccount, nil)
+		mockAccount.EXPECT().ListWitnesses().Return(&tron.Witnesses{Witnesses: []tron.Witness{{IsJobs: true}, {IsJobs: true}}}, nil)
 
 		client, err := tron.NewClient(tron.WithBaseURL("http://localhost:8090"))
 
@@ -193,6 +195,7 @@ func TestStart(t *testing.T) {
 		mockAccount.EXPECT().
 			GetAccount(validators[0].Address).
 			Return(&validators[0], nil)
+		mockAccount.EXPECT().ListWitnesses().Return(&tron.Witnesses{Witnesses: []tron.Witness{{IsJobs: true}, {IsJobs: true}}}, nil)
 
 		client, err := tron.NewClient(tron.WithBaseURL("http://localhost:8090"))
 
@@ -301,6 +304,7 @@ func TestStart(t *testing.T) {
 		mockAccount.EXPECT().
 			GetAccount(proposerAccount.Address).
 			Return(proposerAccount, nil)
+		mockAccount.EXPECT().ListWitnesses().Return(&tron.Witnesses{Witnesses: []tron.Witness{{IsJobs: true}, {IsJobs: true}}}, nil)
 
 		client, err := tron.NewClient(tron.WithBaseURL("http://localhost:8090"))
 
@@ -379,6 +383,7 @@ func TestStart(t *testing.T) {
 		// mocks expectations
 		mockNetwork.EXPECT().GetBlockByNumber(mock.Anything, startBlock.BlockHeader.RawData.Number).Return(startBlock, nil)
 		mockNetwork.EXPECT().GetLatestBlock(mock.Anything).Return(nil, fmt.Errorf("timeout"))
+		mockAccount.EXPECT().ListWitnesses().Return(&tron.Witnesses{Witnesses: []tron.Witness{{IsJobs: true}, {IsJobs: true}}}, nil)
 
 		client, err := tron.NewClient(tron.WithBaseURL("http://localhost:8090"))
 		if err != nil {
@@ -466,6 +471,7 @@ func TestStart(t *testing.T) {
 		mockNetwork.EXPECT().GetBlockByNumber(mock.Anything, startBlock.BlockHeader.RawData.Number).Return(startBlock, nil).Once()
 		mockNetwork.EXPECT().GetLatestBlock(mock.Anything).Return(latestBlock, nil)
 		mockNetwork.EXPECT().GetBlockByNumber(mock.Anything, startBlock.BlockHeader.RawData.Number).Return(nil, fmt.Errorf("timeout")).Once()
+		mockAccount.EXPECT().ListWitnesses().Return(&tron.Witnesses{Witnesses: []tron.Witness{{IsJobs: true}, {IsJobs: true}}}, nil)
 
 		client, err := tron.NewClient(tron.WithBaseURL("http://localhost:8090"))
 		if err != nil {
@@ -564,6 +570,7 @@ func TestStart(t *testing.T) {
 			GetAccount(validators[0].Address).
 			Return(nil, fmt.Errorf("timeout")).
 			Once()
+		mockAccount.EXPECT().ListWitnesses().Return(&tron.Witnesses{Witnesses: []tron.Witness{{IsJobs: true}, {IsJobs: true}}}, nil)
 
 		client, err := tron.NewClient(tron.WithBaseURL("http://localhost:8090"))
 		if err != nil {
@@ -668,6 +675,7 @@ func TestStart(t *testing.T) {
 			GetAccount(validators[0].Address).
 			Return(&validators[0], nil).
 			Once()
+		mockAccount.EXPECT().ListWitnesses().Return(&tron.Witnesses{Witnesses: []tron.Witness{{IsJobs: true}, {IsJobs: true}}}, nil).Times(2)
 
 		client, err := tron.NewClient(tron.WithBaseURL("http://localhost:8090"))
 		if err != nil {
@@ -755,6 +763,7 @@ func TestStart(t *testing.T) {
 		mockNetwork.EXPECT().GetBlockByNumber(mock.Anything, startBlock.BlockHeader.RawData.Number).Return(startBlock, nil).Once()
 		mockNetwork.EXPECT().GetLatestBlock(mock.Anything).Return(latestBlock, nil).Once()
 		mockNetwork.EXPECT().GetBlockByNumber(mock.Anything, startBlock.BlockHeader.RawData.Number).Return(startBlock, nil).Once()
+		mockAccount.EXPECT().ListWitnesses().Return(&tron.Witnesses{Witnesses: []tron.Witness{{IsJobs: true}, {IsJobs: true}}}, nil)
 
 		client, err := tron.NewClient(tron.WithBaseURL("http://localhost:8090"))
 		if err != nil {
@@ -845,6 +854,7 @@ func TestStart(t *testing.T) {
 			GetAccount(validators[0].Address).
 			Return(nil, fmt.Errorf("timeout")).
 			Once()
+		mockAccount.EXPECT().ListWitnesses().Return(&tron.Witnesses{Witnesses: []tron.Witness{{IsJobs: true}, {IsJobs: true}}}, nil)
 
 		client, err := tron.NewClient(tron.WithBaseURL("http://localhost:8090"))
 		if err != nil {

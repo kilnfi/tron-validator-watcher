@@ -20,6 +20,7 @@ type BlockWatcher struct {
 	refreshInterval        int
 	roundProgress          int
 	epoch                  int
+	totalSRs               int
 	metrics                *Collection
 	store                  *status.Store
 	lastProcessedTimestamp int64
@@ -76,18 +77,23 @@ func (bw *BlockWatcher) Start(ctx context.Context) error {
 		bw.metrics.UpdateBlockProducerInfo(validator.AccountName, validator.Address, validator.WitnessInfo.Rank)
 	}
 
+	if witnesses, err := bw.tronClient.Account.ListWitnesses(); err == nil {
+		activeCount := 0
+		for _, w := range witnesses.Witnesses {
+			if w.IsJobs {
+				activeCount++
+			}
+		}
+		bw.totalSRs = activeCount
+		bw.logger.Infof("🌐 Active SRs: %d", activeCount)
+		if bw.store != nil {
+			bw.store.SetTotalSRs(activeCount)
+		}
+	}
+
 	if bw.store != nil {
 		bw.store.SetValidators(bw.filteredValidators)
 		bw.store.ResetEpoch(bw.epoch)
-		if witnesses, err := bw.tronClient.Account.ListWitnesses(); err == nil {
-			activeCount := 0
-			for _, w := range witnesses.Witnesses {
-				if w.IsJobs {
-					activeCount++
-				}
-			}
-			bw.store.SetTotalSRs(activeCount)
-		}
 	}
 
 	bw.roundProgress = int((bw.startBlock.BlockHeader.RawData.Timestamp / 1000) % tron.RoundDuration)
@@ -277,11 +283,15 @@ func (bw *BlockWatcher) isLeader(timeSlot int64) (bool, tron.Account) {
 	// During the maintenance period, no blocks are produced for 6 seconds (2 slots).
 	// To prevent misalignment with the round-robin rotation, we must account for this period
 	// and adjust the witness ID accordingly. Otherwise, we might select the wrong validator.
+	n := int64(bw.totalSRs)
+	if n == 0 {
+		return false, tron.Account{}
+	}
 	if (timeSlot/1000)%tron.RoundDuration == 0 {
 		bw.logger.Debug("isLeader: First slot of the round detected, considering maintenance period")
-		witnessID = ((slot - tron.MaintenanceSkipSlots) % (tron.NumberOfValidators * tron.SingleRepeat)) / tron.SingleRepeat
+		witnessID = ((slot - tron.MaintenanceSkipSlots) % (n * tron.SingleRepeat)) / tron.SingleRepeat
 	} else {
-		witnessID = (slot % (tron.NumberOfValidators * tron.SingleRepeat)) / tron.SingleRepeat
+		witnessID = (slot % (n * tron.SingleRepeat)) / tron.SingleRepeat
 	}
 
 	for _, account := range bw.filteredValidators {
@@ -361,18 +371,24 @@ func (bw *BlockWatcher) handleRoundChanged(ctx context.Context, block *tron.Bloc
 
 	bw.epoch = tron.GetEpochID(block)
 	bw.metrics.InitMetrics(bw.epoch, bw.filteredValidators)
+
+	if witnesses, err := bw.tronClient.Account.ListWitnesses(); err == nil {
+		activeCount := 0
+		for _, w := range witnesses.Witnesses {
+			if w.IsJobs {
+				activeCount++
+			}
+		}
+		bw.totalSRs = activeCount
+		bw.logger.Infof("🌐 Active SRs: %d", activeCount)
+		if bw.store != nil {
+			bw.store.SetTotalSRs(activeCount)
+		}
+	}
+
 	if bw.store != nil {
 		bw.store.SetValidators(bw.filteredValidators)
 		bw.store.ResetEpoch(bw.epoch)
-		if witnesses, err := bw.tronClient.Account.ListWitnesses(); err == nil {
-			activeCount := 0
-			for _, w := range witnesses.Witnesses {
-				if w.IsJobs {
-					activeCount++
-				}
-			}
-			bw.store.SetTotalSRs(activeCount)
-		}
 	}
 
 	time.Sleep(3 * time.Second)

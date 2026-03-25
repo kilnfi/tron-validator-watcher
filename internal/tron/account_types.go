@@ -2,7 +2,7 @@ package tron
 
 type AccountList []Account
 
-// Account représente un compte avec toutes ses propriétés
+// Account represents a Tron account with all its properties.
 type Account struct {
 	AccountName           string          `json:"account_name"`
 	Address               string          `json:"address"`
@@ -27,7 +27,7 @@ type Account struct {
 	WitnessInfo *Witness `json:"-"`
 }
 
-// AccountResource représente les ressources associées au compte
+// AccountResource represents the resources associated with an account.
 type AccountResource struct {
 	EnergyWindowSize      int64 `json:"energy_window_size"`
 	EnergyWindowOptimized bool  `json:"energy_window_optimized"`
@@ -38,7 +38,7 @@ type Key struct {
 	Weight  int    `json:"weight"`
 }
 
-// Permission représente une permission d'un compte
+// Permission represents an account permission.
 type Permission struct {
 	Type           string `json:"type,omitempty"`
 	ID             int    `json:"id,omitempty"`
@@ -48,13 +48,13 @@ type Permission struct {
 	Keys           []Key  `json:"keys"`
 }
 
-// FrozenV2 représente un élément de la liste FrozenV2
+// FrozenV2 represents an entry in the FrozenV2 list.
 type FrozenV2 struct {
 	Amount int64  `json:"amount,omitempty"`
 	Type   string `json:"type,omitempty"`
 }
 
-// AssetV2 représente une clé-valeur des actifs du compte
+// AssetV2 represents a key-value asset entry for an account.
 type AssetV2 struct {
 	Key   string `json:"key"`
 	Value int64  `json:"value"`
@@ -73,7 +73,7 @@ type Witness struct {
 	Rank int `json:"-"`
 }
 
-// WitnessesData représente l'ensemble des témoins
+// Witnesses represents the full list of Tron Super Representatives.
 type Witnesses struct {
 	Witnesses []Witness `json:"witnesses"`
 }

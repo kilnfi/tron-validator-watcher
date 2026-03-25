@@ -26,13 +26,13 @@ type Block struct {
 	Transactions []Transaction `json:"transactions"`
 }
 
-// BlockHeader représente l'en-tête du bloc
+// BlockHeader represents a block header.
 type BlockHeader struct {
 	RawData          BlockHeaderRawData `json:"raw_data"`
 	WitnessSignature string             `json:"witness_signature"`
 }
 
-// BlockHeaderRawData représente les données brutes de l'en-tête du bloc
+// BlockHeaderRawData represents the raw data of a block header.
 type BlockHeaderRawData struct {
 	Number         int64  `json:"number"`
 	TxTrieRoot     string `json:"txTrieRoot"`
@@ -42,7 +42,7 @@ type BlockHeaderRawData struct {
 	Timestamp      int64  `json:"timestamp"`
 }
 
-// Transaction représente une transaction
+// Transaction represents a Tron transaction.
 type Transaction struct {
 	Ret        []TransactionResult `json:"ret"`
 	Signature  []string            `json:"signature"`
@@ -51,12 +51,12 @@ type Transaction struct {
 	RawDataHex string              `json:"raw_data_hex"`
 }
 
-// TransactionResult représente le résultat d'une transaction
+// TransactionResult represents the result of a transaction.
 type TransactionResult struct {
 	ContractRet string `json:"contractRet"`
 }
 
-// TransactionRawData représente les données brutes d'une transaction
+// TransactionRawData represents the raw data of a transaction.
 type TransactionRawData struct {
 	Contract      []Contract `json:"contract"`
 	RefBlockBytes string     `json:"ref_block_bytes"`
@@ -66,20 +66,20 @@ type TransactionRawData struct {
 	Timestamp     int64      `json:"timestamp"`
 }
 
-// Contract représente un contrat dans une transaction
+// Contract represents a contract within a transaction.
 type Contract struct {
 	Parameter    ContractParameter `json:"parameter"`
 	Type         string            `json:"type"`
 	PermissionID int               `json:"Permission_id,omitempty"`
 }
 
-// ContractParameter représente les paramètres du contrat
+// ContractParameter represents the parameters of a contract.
 type ContractParameter struct {
 	Value   ContractValue `json:"value"`
 	TypeURL string        `json:"type_url"`
 }
 
-// ContractValue représente les valeurs possibles des paramètres de contrat
+// ContractValue represents the possible values of contract parameters.
 type ContractValue struct {
 	Data            string `json:"data,omitempty"`
 	OwnerAddress    string `json:"owner_address"`

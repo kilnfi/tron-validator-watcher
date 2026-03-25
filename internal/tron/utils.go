@@ -85,7 +85,7 @@ func ConvertAddressToBase58(address string) (string, error) {
 }
 
 func doubleHashSHA256(data []byte) []byte {
-	hash0 := sha256.Sum256(data)     // Premier hash
-	hash1 := sha256.Sum256(hash0[:]) // Deuxième hash
+	hash0 := sha256.Sum256(data)
+	hash1 := sha256.Sum256(hash0[:])
 	return hash1[:]
 }
