@@ -141,7 +141,10 @@ func (s *Store) Get() Status {
 	isOurSlot := false
 	currentLeader := ""
 	slot := now / (tron.BlockTime * 1000)
-	witnessID := (slot % int64(tron.NumberOfValidators*tron.SingleRepeat)) / int64(tron.SingleRepeat)
+	var witnessID int64
+	if n := int64(s.totalSRs); n > 0 {
+		witnessID = (slot % (n * int64(tron.SingleRepeat))) / int64(tron.SingleRepeat)
+	}
 	for _, v := range s.validators {
 		if v.WitnessInfo != nil && v.WitnessInfo.Rank == int(witnessID+1) {
 			isOurSlot = true

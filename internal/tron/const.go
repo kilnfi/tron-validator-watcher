@@ -10,13 +10,11 @@ const (
 
 // Chain parameters
 const (
-	RoundDuration              = 21600 // Durée d'un round en secondes (6h)
-	MaxSlotsPerRound           = 7200  // Nombre de slots par round
-	BlockTime                  = 3     // Temps d'un bloc en secondes
-	NumberOfValidators         = 2     // Nombre total de validateurs
-	BlocksPerRound             = RoundDuration / BlockTime
-	BlocksPerRoundPerValidator = BlocksPerRound / NumberOfValidators
-	GenesisBlockTime           = 0 // Départ du bloc genesis
-	MaintenanceSkipSlots       = 2 // Fenêtre de maintenance
-	SingleRepeat               = 1 // Valeur de répétition unique
+	RoundDuration        = 21600 // Round duration in seconds (6h)
+	MaxSlotsPerRound     = 7200  // Number of slots per round
+	BlockTime            = 3     // Block time in seconds
+	BlocksPerRound       = RoundDuration / BlockTime
+	GenesisBlockTime     = 0 // Genesis block timestamp
+	MaintenanceSkipSlots = 2 // Maintenance window slots skipped at start of round
+	SingleRepeat         = 1 // Each SR produces this many consecutive blocks
 )
