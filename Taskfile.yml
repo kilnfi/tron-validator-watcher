@@ -1,0 +1,93 @@
+version: "3"
+
+silent: true
+
+tasks:
+  setup:
+    desc: Initialize the project for local development
+    cmds:
+      - echo "Setting up project..."
+      - go mod download
+      - cmd: npm ci
+        dir: frontend
+      - task: generate
+      - task: build:frontend
+      - echo "Setup complete. Run 'task run' to start."
+
+  generate:
+    desc: Generate mocks
+    cmds:
+      - echo "Generating mocks..."
+      - mockery
+      - echo "Done."
+
+  build:frontend:
+    desc: Build the React frontend
+    dir: frontend
+    cmds:
+      - echo "Building frontend..."
+      - npm ci
+      - npm run build
+      - echo "Frontend built."
+
+  build:
+    desc: Build the Go binary
+    deps: [generate]
+    cmds:
+      - echo "Building binary..."
+      - go build -ldflags="-s -w" -o bin/tron-validator-watcher cmd/watcher/main.go
+      - echo "Binary available at bin/tron-validator-watcher."
+
+  build:all:
+    desc: Build everything (mocks + frontend + binary)
+    deps: [generate, build:frontend, build]
+
+  run:
+    desc: Run the watcher locally
+    deps: [generate]
+    cmds:
+      - echo "Starting tron-validator-watcher..."
+      - go run cmd/watcher/main.go --config-file config.yaml
+
+  test:
+    desc: Run all tests
+    cmds:
+      - echo "Running tests..."
+      - go test -v ./... -count=1
+
+  coverage:
+    desc: Run tests and open HTML coverage report
+    cmds:
+      - echo "Generating coverage report..."
+      - go test -race -coverprofile=coverage/coverage.out.tmp ./... -count=1
+      - sh -c "cat coverage/coverage.out.tmp | grep -v mocks > coverage/coverage.out"
+      - go tool cover -html=coverage/coverage.out
+      - rm -rf coverage/*
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - echo "Running linter..."
+      - golangci-lint run ./...
+      - echo "All good."
+
+  fmt:
+    desc: Format Go source code
+    cmds:
+      - echo "Formatting code..."
+      - gofmt -w .
+      - echo "Done."
+
+  tidy:
+    desc: Tidy Go module dependencies
+    cmds:
+      - echo "Tidying dependencies..."
+      - go mod tidy
+      - echo "Done."
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - echo "Cleaning..."
+      - rm -rf bin/ coverage/
+      - echo "Done."

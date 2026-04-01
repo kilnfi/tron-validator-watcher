@@ -18,9 +18,9 @@ To use **Tron Validator Watcher**, you need:
 - A running **Tron RPC node**, either:
   - A local node, fully synchronized with the network.
   - A remote provider such as **QuickNode**, **TronGrid**, or other Tron RPC services.
-- **Go 1.24+** installed _(for development purposes only)_.
-- **Node.js 18+** _(only if building the frontend from source)_
-- **Make**
+- **Go 1.26+** installed _(for development purposes only)_.
+- **Node.js 24+** _(only if building the frontend from source)_
+- **mise** _(recommended — installs all tooling automatically)_
 - **Docker** if you want to build local images
 
 ## 📦 Installation
@@ -30,7 +30,9 @@ To use **Tron Validator Watcher**, you need:
 ```sh
 git clone https://github.com/kilnfi/tron-validator-watcher.git
 cd tron-validator-watcher
-make build
+mise install   # installs Go, Node, golangci-lint, mockery, task
+task setup     # downloads deps, generates mocks, builds frontend
+task build
 ```
 
 ### Releases
@@ -60,6 +62,8 @@ Run the tool with:
 
 ```sh
 ./tron-validator-watcher --config-file=config.yaml
+# or via task
+task run
 ```
 
 ### Available Flags
@@ -206,14 +210,25 @@ This exporter provides the following Prometheus metrics, available at `http://lo
 ```sh
 git clone https://github.com/kilnfi/tron-validator-watcher.git
 cd tron-validator-watcher
-make run
+mise install
+task setup
+task run
 ```
 
-### Running Tests
+### Available tasks
 
 ```sh
-make tests
-make coverage
+task setup          # first-time setup (deps + mocks + frontend)
+task build          # build the Go binary
+task build:all      # build everything (mocks + frontend + binary)
+task run            # run locally
+task test           # run tests
+task coverage       # tests with HTML coverage report
+task lint           # run golangci-lint
+task fmt            # format Go code
+task tidy           # go mod tidy
+task generate       # regenerate mocks
+task clean          # remove build artifacts
 ```
 
 ## 📜 License
