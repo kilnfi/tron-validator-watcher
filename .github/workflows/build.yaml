@@ -12,7 +12,6 @@ permissions:
   contents: read
   packages: write
   id-token: write # needed for cosign keyless signing
-  security-events: write # needed for SARIF upload
 
 env:
   IMAGE_NAME: tron-validator-watcher
@@ -83,13 +82,7 @@ jobs:
       matrix:
         arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON('["amd64", "arm64"]') }}
     runs-on: fixed-egress-4c-16g
-    permissions:
-      contents: read
-      security-events: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-
       - name: Download image tarball
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -98,18 +91,12 @@ jobs:
 
       - name: Scan image for vulnerabilities
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
-        id: scan
         with:
           image: /tmp/image-${{ matrix.arch }}.tar
           fail-build: true
           severity-cutoff: critical
           only-fixed: true
-
-      - name: Upload SARIF report
-        if: github.event_name == 'push'
-        uses: github/codeql-action/upload-sarif@5c8a8a642e79153f5d047b10ec1cba1d1cc65699 # v3
-        with:
-          sarif_file: ${{ steps.scan.outputs.sarif }}
+          output-format: table
 
   push:
     if: github.event_name == 'push'
