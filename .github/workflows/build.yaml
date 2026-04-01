@@ -27,7 +27,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${{ github.ref_name }}-$(echo ${{ github.sha }} | cut -c1-7)"
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            TAG="pr-${{ github.event.pull_request.number }}-$(echo ${{ github.sha }} | cut -c1-7)"
+          else
+            TAG="${{ github.ref_name }}-$(echo ${{ github.sha }} | cut -c1-7)"
+          fi
           echo "Setting image tag to $TAG"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
@@ -37,9 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch:
-          - amd64
-          - arm64
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON('["amd64", "arm64"]') }}
     runs-on: fixed-egress-4c-16g
     steps:
       - name: Checkout repository
@@ -78,9 +80,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch:
-          - amd64
-          - arm64
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON('["amd64", "arm64"]') }}
     runs-on: fixed-egress-4c-16g
     permissions:
       contents: read
