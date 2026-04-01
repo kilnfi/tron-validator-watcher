@@ -19,11 +19,11 @@ jobs:
     runs-on: fixed-egress-16c-64g
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 0
           fetch-tags: true
-      - uses: release-drafter/release-drafter@v7
+      - uses: release-drafter/release-drafter@139054aeaa9adc52ab36ddf67437541f039b88e2 # v7
         with:
           commitish: main
         env:
