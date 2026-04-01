@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -105,6 +108,7 @@ jobs:
           sarif_file: ${{ steps.scan.outputs.sarif }}
 
   push:
+    if: github.event_name == 'push'
     needs:
       - image-tag
       - scan
@@ -155,6 +159,7 @@ jobs:
           retention-days: 1
 
   merge:
+    if: github.event_name == 'push'
     runs-on: fixed-egress-4c-16g
     needs:
       - image-tag
@@ -197,6 +202,7 @@ jobs:
           REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
 
   sign:
+    if: github.event_name == 'push'
     runs-on: fixed-egress-4c-16g
     needs:
       - image-tag
