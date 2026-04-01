@@ -1,0 +1,32 @@
+name: Security
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # every Monday at 6am UTC — catch new CVEs on published image
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  grype:
+    name: grype
+    runs-on: fixed-egress-4c-16g
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Scan published image for vulnerabilities
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        id: scan
+        with:
+          image: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher:latest
+          fail-build: true
+          severity-cutoff: critical
+          only-fixed: true
+
+      - name: Upload SARIF report
+        if: always()
+        uses: github/codeql-action/upload-sarif@5c8a8a642e79153f5d047b10ec1cba1d1cc65699 # v3
+        with:
+          sarif_file: ${{ steps.scan.outputs.sarif }}

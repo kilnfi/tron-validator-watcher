@@ -1,0 +1,6 @@
+[tools]
+go = "1.26"
+node = "24"
+task = "latest"
+golangci-lint = "2.11.3"
+"go:github.com/vektra/mockery/v2" = "2.53.6"

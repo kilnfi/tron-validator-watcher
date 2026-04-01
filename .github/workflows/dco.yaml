@@ -1,0 +1,46 @@
+name: DCO
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dco:
+    name: DCO check
+    runs-on: fixed-egress-4c-16g
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+
+      - name: Check DCO sign-off
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          missing=()
+          while IFS= read -r commit; do
+            msg=$(git log --format="%B" -n 1 "$commit")
+            if ! echo "$msg" | grep -qiE "^Signed-off-by: .+ <.+@.+>"; then
+              missing+=("$commit")
+            fi
+          done < <(git log --format="%H" "$base..$head")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "❌ The following commits are missing a Signed-off-by line:"
+            for c in "${missing[@]}"; do
+              echo "  - $c"
+            done
+            echo ""
+            echo "Please add 'Signed-off-by: Your Name <your@email.com>' to each commit."
+            echo "You can use 'git commit -s' or 'git rebase --signoff HEAD~N' to fix this."
+            exit 1
+          fi
+
+          echo "✅ All commits are signed off."
