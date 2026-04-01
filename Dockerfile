@@ -18,13 +18,13 @@ FROM ${BUILDER} AS builder
 
 WORKDIR /workspace
 
-COPY . .
-COPY --from=frontend-builder /workspace/internal/ui/dist ./internal/ui/dist
-
 RUN apk --no-cache add gcc musl-dev
 
-RUN go mod download \
-  && go mod verify
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+COPY . .
+COPY --from=frontend-builder /workspace/internal/ui/dist ./internal/ui/dist
 
 RUN go build -v -o /usr/local/bin/tron-validator-watcher cmd/watcher/main.go
 
