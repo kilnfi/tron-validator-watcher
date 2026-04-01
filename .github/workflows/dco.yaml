@@ -12,7 +12,7 @@ permissions:
 jobs:
   dco:
     name: DCO check
-    runs-on: ubuntu-latest
+    runs-on: fixed-egress-4c-16g
     steps:
       - name: Checkout repository
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
