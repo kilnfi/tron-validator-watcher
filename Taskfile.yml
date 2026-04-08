@@ -85,6 +85,13 @@ tasks:
       - go mod tidy
       - echo "Done."
 
+  scan:
+    desc: Scan source dependencies for vulnerabilities (Go modules + npm dev deps)
+    cmds:
+      - SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES=true syft dir:. -o syft-json -q > /tmp/sbom.syft.json
+      - grype sbom:/tmp/sbom.syft.json
+      - rm /tmp/sbom.syft.json
+
   clean:
     desc: Remove build artifacts
     cmds:
