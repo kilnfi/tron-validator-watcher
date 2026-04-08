@@ -3,14 +3,36 @@ name: Security
 on:
   schedule:
     - cron: '0 6 * * 1' # every Monday at 6am UTC — catch new CVEs on published image
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
   security-events: write
 
 jobs:
+  deps-scan:
+    name: deps scan (source)
+    runs-on: fixed-egress-4c-16g
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Scan source dependencies for vulnerabilities
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          path: .
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table
+        env:
+          SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES: "true"
+
   grype:
     name: grype
+    if: github.event_name == 'schedule'
     runs-on: fixed-egress-4c-16g
     steps:
       - name: Checkout repository
