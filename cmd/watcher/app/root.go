@@ -272,7 +272,7 @@ func initLogger() {
 	}
 }
 
-// initConfig load the configuration from the file and environment variables.
+// initConfig loads the configuration from the file and environment variables.
 // It also validates the configuration.
 func initConfig() {
 	if configFile != "" {
