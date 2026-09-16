@@ -33,7 +33,8 @@ FROM ${RUNNER}
 
 WORKDIR /home/tron
 
-RUN apk --no-cache add ca-certificates curl \
+RUN apk --no-cache upgrade \
+  && apk --no-cache add ca-certificates curl \
   && update-ca-certificates
 
 COPY --from=builder /usr/local/bin/tron-validator-watcher .
