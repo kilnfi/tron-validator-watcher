@@ -201,6 +201,22 @@ This exporter provides the following Prometheus metrics, available at `http://lo
 | `tron_validator_watcher_latest_block_processed_by_block_watcher`  | The latest block processed by the block watcher             | Gauge       | —                                             |
 | `tron_validator_watcher_missed_blocks_total`                      | Total number of blocks missed by the validator              | CounterVec  | `validator_name`, `validator_address`         |
 | `tron_validator_watcher_proposed_blocks_total`                    | Total number of blocks proposed by the validator            | CounterVec  | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_rank`                                     | Current ranking among all Super Representatives (1 = highest vote count); emitted for every monitored validator, including those that dropped out of the active SR set | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_votes`                                    | Current number of votes received by the validator           | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_votes_percentage`                         | Validator's share of the total network votes, in percent    | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_votes_margin_to_sr`                       | Votes separating the validator from the active SR cutoff (positive = cushion, negative = deficit) | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_balance`                                  | Validator account balance, in TRX                           | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_reward_balance`                           | Claimable (unwithdrawn) rewards, in TRX                      | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_rewards_claimable`                        | Whether the validator has claimable rewards (1) or not (0)  | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_account_activated`                        | Whether the validator account is activated on-chain (1/0)   | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_frozen_balance`                           | Validator's staked (frozen v2) TRX                          | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_witness_total_produced_blocks`            | Lifetime blocks produced, as reported by the node           | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_witness_total_missed_blocks`              | Lifetime blocks missed, as reported by the node             | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_brokerage`                                | Validator's brokerage (commission) rate, in percent         | GaugeVec    | `validator_name`, `validator_address`         |
+| `tron_validator_watcher_active_srs`                               | Number of active Super Representatives on the network       | Gauge       | —                                             |
+| `tron_validator_watcher_next_maintenance_time`                    | Unix timestamp (seconds) of the next maintenance period     | Gauge       | —                                             |
+| `tron_validator_watcher_node_up`                                  | Whether the TRON node queried by the watcher is reachable (1/0) | Gauge   | —                                             |
+| `tron_validator_watcher_node_head_block`                          | Latest block number reported by the TRON node (chain head)  | Gauge       | —                                             |
 | `tron_validator_watcher_round_progress`                           | The current progress within the round (seconds)             | Gauge       | —                                             |
 
 ## 🛠 Development

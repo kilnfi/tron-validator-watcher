@@ -193,6 +193,60 @@ func (_c *AccountClient_ListWitnesses_Call) RunAndReturn(run func() (*tron.Witne
 	return _c
 }
 
+// GetBrokerage provides a mock function with given fields: address
+func (_m *AccountClient) GetBrokerage(address string) (int, error) {
+	ret := _m.Called(address)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBrokerage")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (int, error)); ok {
+		return rf(address)
+	}
+	if rf, ok := ret.Get(0).(func(string) int); ok {
+		r0 = rf(address)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(address)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// AccountClient_GetBrokerage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBrokerage'
+type AccountClient_GetBrokerage_Call struct {
+	*mock.Call
+}
+
+func (_e *AccountClient_Expecter) GetBrokerage(address interface{}) *AccountClient_GetBrokerage_Call {
+	return &AccountClient_GetBrokerage_Call{Call: _e.mock.On("GetBrokerage", address)}
+}
+
+func (_c *AccountClient_GetBrokerage_Call) Run(run func(address string)) *AccountClient_GetBrokerage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *AccountClient_GetBrokerage_Call) Return(_a0 int, _a1 error) *AccountClient_GetBrokerage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *AccountClient_GetBrokerage_Call) RunAndReturn(run func(string) (int, error)) *AccountClient_GetBrokerage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewAccountClient creates a new instance of AccountClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewAccountClient(t interface {

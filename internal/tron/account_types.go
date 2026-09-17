@@ -82,6 +82,16 @@ func (s *Account) IsBlockProducer() bool {
 	return s.WitnessInfo.IsJobs
 }
 
+// FrozenAmount returns the total amount of TRX the account has staked (frozen
+// v2), summed across all resource types, in SUN.
+func (s *Account) FrozenAmount() int64 {
+	var total int64
+	for _, f := range s.FrozenV2 {
+		total += f.Amount
+	}
+	return total
+}
+
 func (s AccountList) GetBlockProducerValidators() AccountList {
 	var accounts AccountList
 	for _, v := range s {
