@@ -16,6 +16,7 @@ type AccountClient interface {
 	GetAccount(address string) (*Account, error)
 	ListWitnesses() (*Witnesses, error)
 	GetWitnesses(address string) (*Witness, error)
+	GetBrokerage(address string) (int, error)
 }
 
 type AccountClientImpl struct {
@@ -142,4 +143,51 @@ func (c *AccountClientImpl) GetWitnesses(address string) (*Witness, error) {
 		}
 	}
 	return witness, nil
+}
+
+// GetBrokerage returns the validator's brokerage (commission) rate, in percent,
+// as reported by the node's /wallet/getBrokerage endpoint.
+func (c *AccountClientImpl) GetBrokerage(address string) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	requestURL, err := url.JoinPath(c.client.baseURL.String(), APIGetBrokerageEndpoint)
+	if err != nil {
+		return 0, fmt.Errorf("GetBrokerage: failed to build request URL (address: %s, error: %w)", address, err)
+	}
+
+	payload, err := json.Marshal(map[string]interface{}{"address": address, "visible": true})
+	if err != nil {
+		return 0, fmt.Errorf("GetBrokerage: failed to marshal request payload (address: %s, error: %w)", address, err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, bytes.NewReader(payload))
+	if err != nil {
+		return 0, fmt.Errorf("GetBrokerage: failed to create request (address: %s, error: %w)", address, err)
+	}
+
+	res, err := c.client.client.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("GetBrokerage: HTTP request failed (address: %s, error: %w)", address, err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.StatusCode != http.StatusOK {
+		resBody, _ := io.ReadAll(res.Body)
+		return 0, fmt.Errorf("GetBrokerage: request failed (address: %s, status: %d, response: %s)", address, res.StatusCode, string(resBody))
+	}
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return 0, fmt.Errorf("GetBrokerage: failed to read response body (address: %s, error: %w)", address, err)
+	}
+
+	var out struct {
+		Brokerage int `json:"brokerage"`
+	}
+	if err := json.Unmarshal(resBody, &out); err != nil {
+		return 0, fmt.Errorf("GetBrokerage: failed to decode response (address: %s, error: %w)", address, err)
+	}
+
+	return out.Brokerage, nil
 }

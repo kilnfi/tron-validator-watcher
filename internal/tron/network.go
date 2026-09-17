@@ -14,6 +14,7 @@ import (
 type NetworkClient interface {
 	GetLatestBlock(ctx context.Context) (*Block, error)
 	GetBlockByNumber(ctx context.Context, number int64) (*Block, error)
+	GetNextMaintenanceTime(ctx context.Context) (int64, error)
 }
 
 type NetworkClientImpl struct {
@@ -178,4 +179,46 @@ func (c *NetworkClientImpl) GetBlockByNumber(ctx context.Context, number int64) 
 		return nil, fmt.Errorf("GetBlockByNumber: failed to decode response: %w", err)
 	}
 	return block, nil
+}
+
+// GetNextMaintenanceTime returns the Unix timestamp, in milliseconds, of the
+// next maintenance period (when the active SR set is reshuffled).
+func (c *NetworkClientImpl) GetNextMaintenanceTime(ctx context.Context) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	requestURL, err := url.JoinPath(c.client.baseURL.String(), APIGetNextMaintenanceTimeEndpoint)
+	if err != nil {
+		return 0, fmt.Errorf("GetNextMaintenanceTime: failed to build request URL: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, nil)
+	if err != nil {
+		return 0, fmt.Errorf("GetNextMaintenanceTime: failed to create http request: %w", err)
+	}
+
+	res, err := c.client.client.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("GetNextMaintenanceTime: HTTP request failed: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.StatusCode != http.StatusOK {
+		resBody, _ := io.ReadAll(res.Body)
+		return 0, fmt.Errorf("GetNextMaintenanceTime: HTTP request failed (status: %d): %s", res.StatusCode, string(resBody))
+	}
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return 0, fmt.Errorf("GetNextMaintenanceTime: failed to read response body: %w", err)
+	}
+
+	var out struct {
+		Num int64 `json:"num"`
+	}
+	if err := json.Unmarshal(resBody, &out); err != nil {
+		return 0, fmt.Errorf("GetNextMaintenanceTime: failed to decode response: %w", err)
+	}
+
+	return out.Num, nil
 }

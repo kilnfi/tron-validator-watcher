@@ -1,0 +1,3 @@
+# HELP tron_validator_watcher_rank The current ranking of the validator among all Super Representatives (1 = highest vote count). A validator is an active SR while its rank is within the active SR count.
+# TYPE tron_validator_watcher_rank gauge
+tron_validator_watcher_rank{validator_address="fakeaddress",validator_name="test"} 28

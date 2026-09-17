@@ -139,6 +139,60 @@ func (_c *NetworkClient_GetLatestBlock_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// GetNextMaintenanceTime provides a mock function with given fields: ctx
+func (_m *NetworkClient) GetNextMaintenanceTime(ctx context.Context) (int64, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetNextMaintenanceTime")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (int64, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) int64); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// NetworkClient_GetNextMaintenanceTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetNextMaintenanceTime'
+type NetworkClient_GetNextMaintenanceTime_Call struct {
+	*mock.Call
+}
+
+func (_e *NetworkClient_Expecter) GetNextMaintenanceTime(ctx interface{}) *NetworkClient_GetNextMaintenanceTime_Call {
+	return &NetworkClient_GetNextMaintenanceTime_Call{Call: _e.mock.On("GetNextMaintenanceTime", ctx)}
+}
+
+func (_c *NetworkClient_GetNextMaintenanceTime_Call) Run(run func(ctx context.Context)) *NetworkClient_GetNextMaintenanceTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *NetworkClient_GetNextMaintenanceTime_Call) Return(_a0 int64, _a1 error) *NetworkClient_GetNextMaintenanceTime_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *NetworkClient_GetNextMaintenanceTime_Call) RunAndReturn(run func(context.Context) (int64, error)) *NetworkClient_GetNextMaintenanceTime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewNetworkClient creates a new instance of NetworkClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewNetworkClient(t interface {

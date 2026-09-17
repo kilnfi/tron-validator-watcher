@@ -87,6 +87,24 @@ func TestUpdateMissedBlock(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestUpdateRank(t *testing.T) {
+	t.Parallel()
+
+	registry := prometheus.NewRegistry()
+	collection := NewCollection()
+	collection.MustRegister(registry)
+
+	collection.UpdateRank("test", "fakeaddress", 28)
+	expectedMetrics, err := os.Open("testdata/rank.metrics")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = expectedMetrics.Close() }()
+
+	err = testutil.GatherAndCompare(registry, expectedMetrics, "tron_validator_watcher_rank")
+	require.NoError(t, err)
+}
+
 func TestUpdateConsecutiveMissedBlock(t *testing.T) {
 	t.Parallel()
 

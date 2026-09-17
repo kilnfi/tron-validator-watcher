@@ -19,15 +19,19 @@ type RecentBlock struct {
 }
 
 type ValidatorStatus struct {
-	Name         string `json:"name"`
-	Address      string `json:"address"`
-	Rank         int    `json:"rank"`
-	Proposed     int    `json:"proposed"`
-	Missed       int    `json:"missed"`
-	ConsecMissed int    `json:"consec_missed"`
-	IsActive     bool   `json:"is_active"`
-	VoteCount    int64  `json:"vote_count"`
-	NextSlotInMs int64  `json:"next_slot_in_ms"` // -1 if unknown
+	Name            string  `json:"name"`
+	Address         string  `json:"address"`
+	Rank            int     `json:"rank"`
+	Proposed        int     `json:"proposed"`
+	Missed          int     `json:"missed"`
+	ConsecMissed    int     `json:"consec_missed"`
+	IsActive        bool    `json:"is_active"`
+	VoteCount       int64   `json:"vote_count"`
+	VotesMarginToSR int64   `json:"votes_margin_to_sr"` // votes to the active SR cutoff (negative = deficit)
+	Balance         float64 `json:"balance"`            // TRX
+	RewardBalance   float64 `json:"reward_balance"`     // claimable rewards, TRX
+	Frozen          float64 `json:"frozen"`             // staked TRX
+	NextSlotInMs    int64   `json:"next_slot_in_ms"`    // -1 if unknown
 }
 
 type Status struct {
@@ -60,13 +64,23 @@ type Store struct {
 	validators     tron.AccountList
 	totalSRs       int
 	validatorStats map[string]*validatorStat // keyed by address
+	votesMargin    map[string]int64          // address → votes to SR cutoff
 }
 
 func NewStore() *Store {
 	return &Store{
 		recentBlocks:   make([]RecentBlock, 0, maxRecentBlocks),
 		validatorStats: make(map[string]*validatorStat),
+		votesMargin:    make(map[string]int64),
 	}
+}
+
+// SetVotesMargin records, per validator address, the number of votes separating
+// it from the active SR cutoff (negative when the validator is out of the set).
+func (s *Store) SetVotesMargin(margins map[string]int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.votesMargin = margins
 }
 
 func (s *Store) SetValidators(validators tron.AccountList) {
@@ -221,15 +235,19 @@ func (s *Store) Get() Status {
 			nextSlot = -1
 		}
 		validators = append(validators, ValidatorStatus{
-			Name:         v.AccountName,
-			Address:      v.Address,
-			Rank:         rank,
-			Proposed:     st.proposed,
-			Missed:       st.missed,
-			ConsecMissed: st.consecMissed,
-			IsActive:     isActive,
-			VoteCount:    voteCount,
-			NextSlotInMs: nextSlot,
+			Name:            v.AccountName,
+			Address:         v.Address,
+			Rank:            rank,
+			Proposed:        st.proposed,
+			Missed:          st.missed,
+			ConsecMissed:    st.consecMissed,
+			IsActive:        isActive,
+			VoteCount:       voteCount,
+			VotesMarginToSR: s.votesMargin[v.Address],
+			Balance:         float64(v.Balance) / 1_000_000,
+			RewardBalance:   float64(v.Allowance) / 1_000_000,
+			Frozen:          float64(v.FrozenAmount()) / 1_000_000,
+			NextSlotInMs:    nextSlot,
 		})
 		proposedTotal += st.proposed
 		missedTotal += st.missed

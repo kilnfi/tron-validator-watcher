@@ -76,6 +76,11 @@ func (bw *BlockWatcher) Start(ctx context.Context) error {
 		bw.logger.Infof("🥇 Validator %s is ranked #%d", validator.AccountName, validator.WitnessInfo.Rank)
 		bw.metrics.UpdateBlockProducerInfo(validator.AccountName, validator.Address, validator.WitnessInfo.Rank)
 	}
+	// Populate every metric up front so the exporter serves data immediately at
+	// startup instead of waiting for the first round change. The account data was
+	// already fetched into bw.validators before the watcher was created.
+	bw.refreshWitnessMetrics()
+	bw.refreshAccountMetrics(ctx)
 
 	if witnesses, err := bw.tronClient.Account.ListWitnesses(); err == nil {
 		activeCount := 0
@@ -116,8 +121,15 @@ func (bw *BlockWatcher) Start(ctx context.Context) error {
 func (bw *BlockWatcher) start(ctx context.Context) error {
 	block, err := bw.tronClient.Network.GetLatestBlock(ctx)
 	if err != nil {
+		bw.metrics.UpdateNodeUp(false)
 		return fmt.Errorf("BlockWatcher: failed to fetch latest block: %w", err)
 	}
+	bw.metrics.UpdateNodeUp(true)
+	bw.metrics.UpdateNodeHeadBlock(float64(block.BlockHeader.RawData.Number))
+
+	// Keep the vote/rank metrics fresh on every tick (they change continuously),
+	// unlike the account metrics which are only refreshed on round changes.
+	bw.refreshWitnessMetrics()
 
 	roundChanged := false
 	progress := bw.roundProgress
@@ -364,13 +376,21 @@ func (bw *BlockWatcher) handleRoundChanged(ctx context.Context, block *tron.Bloc
 	if err := bw.refresh(); err != nil {
 		return fmt.Errorf("handleRoundChanged: failed to refresh account data: %w", err)
 	}
+
+	// InitMetrics resets the per-epoch metrics (including block_producer_info),
+	// so it must run before we set the current values, otherwise the values set
+	// below would be wiped out immediately.
+	bw.epoch = tron.GetEpochID(block)
+	bw.metrics.InitMetrics(bw.epoch, bw.filteredValidators)
+
 	for _, validator := range bw.filteredValidators {
 		bw.logger.Infof("🥇 Validator %s is ranked #%d", validator.AccountName, validator.WitnessInfo.Rank)
 		bw.metrics.UpdateBlockProducerInfo(validator.AccountName, validator.Address, validator.WitnessInfo.Rank)
 	}
-
-	bw.epoch = tron.GetEpochID(block)
-	bw.metrics.InitMetrics(bw.epoch, bw.filteredValidators)
+	// Refresh vote/rank metrics (all validators) and the slower account/brokerage
+	// metrics now that we have fresh account data for this round.
+	bw.refreshWitnessMetrics()
+	bw.refreshAccountMetrics(ctx)
 
 	if witnesses, err := bw.tronClient.Account.ListWitnesses(); err == nil {
 		activeCount := 0
@@ -426,4 +446,59 @@ func (bw *BlockWatcher) refresh() error {
 	bw.validators = accounts
 	bw.filteredValidators = bw.getBlockProducers()
 	return nil
+}
+
+// refreshWitnessMetrics recomputes the vote/rank metrics for every monitored
+// validator from the network-wide witness list. It is best-effort: a failure is
+// logged and never interrupts block processing.
+func (bw *BlockWatcher) refreshWitnessMetrics() {
+	witnesses, err := bw.tronClient.Account.ListWitnesses()
+	if err != nil {
+		bw.logger.Warnf("failed to refresh witness metrics: %v", err)
+		return
+	}
+
+	// A successful witness fetch means the node answered, so report it as up
+	// (relevant at startup, before the first block-processing tick runs).
+	bw.metrics.UpdateNodeUp(true)
+
+	board := newWitnessBoard(witnesses.Witnesses)
+	bw.metrics.UpdateActiveSRCount(board.activeSRCount)
+
+	margins := make(map[string]int64, len(bw.validators))
+	for _, validator := range bw.validators {
+		metrics, ok := board.metricsFor(tron.ConvertAddressToHex(validator.Address))
+		if !ok {
+			continue
+		}
+		bw.metrics.UpdateWitnessMetrics(validator.AccountName, validator.Address, metrics)
+		margins[validator.Address] = metrics.VotesMarginToSR
+	}
+	if bw.store != nil {
+		bw.store.SetVotesMargin(margins)
+	}
+}
+
+// refreshAccountMetrics records the slower-moving account metrics (balance,
+// rewards, stake, brokerage) and the next maintenance time. It relies on the
+// account data already refreshed into bw.validators and is best-effort.
+func (bw *BlockWatcher) refreshAccountMetrics(ctx context.Context) {
+	for _, validator := range bw.validators {
+		bw.metrics.UpdateAccountMetrics(validator.AccountName, validator.Address, validator)
+
+		brokerage, err := bw.tronClient.Account.GetBrokerage(validator.Address)
+		if err != nil {
+			bw.logger.Warnf("failed to fetch brokerage for %s: %v", validator.AccountName, err)
+		} else {
+			bw.metrics.UpdateBrokerage(validator.AccountName, validator.Address, brokerage)
+		}
+	}
+
+	nextMaintenance, err := bw.tronClient.Network.GetNextMaintenanceTime(ctx)
+	if err != nil {
+		bw.logger.Warnf("failed to fetch next maintenance time: %v", err)
+		return
+	}
+	// The node reports milliseconds; expose seconds to match Prometheus conventions.
+	bw.metrics.UpdateNextMaintenanceTime(float64(nextMaintenance) / 1000)
 }

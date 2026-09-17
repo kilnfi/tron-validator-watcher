@@ -19,6 +19,10 @@ interface ValidatorStatus {
   consec_missed: number
   is_active: boolean
   vote_count: number
+  votes_margin_to_sr: number
+  balance: number
+  reward_balance: number
+  frozen: number
   next_slot_in_ms: number
 }
 
@@ -58,6 +62,20 @@ function successRate(proposed: number, missed: number): string {
   const total = proposed + missed
   if (total === 0) return 'N/A'
   return ((proposed / total) * 100).toFixed(1) + '%'
+}
+
+function formatTRX(trx: number): string {
+  if (trx >= 1_000_000) return (trx / 1_000_000).toFixed(2) + 'M'
+  if (trx >= 1_000) return (trx / 1_000).toFixed(1) + 'K'
+  return trx.toFixed(1)
+}
+
+function formatVotesMargin(votes: number): string {
+  const sign = votes >= 0 ? '+' : '-'
+  const abs = Math.abs(votes)
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(2)}M`
+  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1)}K`
+  return `${sign}${abs}`
 }
 
 function rankStyle(rank: number): string {
@@ -345,6 +363,30 @@ export default function App() {
                     {v.vote_count > 0 && (
                       <span className="text-xs text-slate-600">{(v.vote_count / 1_000_000).toFixed(1)}M votes</span>
                     )}
+                  </div>
+                </div>
+
+                {/* SR margin + balances */}
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-slate-800/40 border border-white/5">
+                    <span className="text-slate-500">SR margin</span>
+                    <span className={`font-mono font-bold ${v.votes_margin_to_sr >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {formatVotesMargin(v.votes_margin_to_sr)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-slate-800/40 border border-white/5">
+                    <span className="text-slate-500">Rewards</span>
+                    <span className={`font-mono font-bold ${v.reward_balance > 0 ? 'text-yellow-300' : 'text-slate-500'}`}>
+                      {formatTRX(v.reward_balance)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-slate-800/40 border border-white/5">
+                    <span className="text-slate-500">Balance</span>
+                    <span className="font-mono text-slate-300">{formatTRX(v.balance)}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-slate-800/40 border border-white/5">
+                    <span className="text-slate-500">Staked</span>
+                    <span className="font-mono text-slate-300">{formatTRX(v.frozen)}</span>
                   </div>
                 </div>
                 <div className="mt-1.5 text-xs text-slate-600">

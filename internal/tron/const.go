@@ -2,10 +2,12 @@ package tron
 
 // API endpoints
 const (
-	APIListWitnessesEndpoint  = "/wallet/listwitnesses"
-	APIGetAccountInfoEndpoint = "/wallet/getaccount"
-	APIGetLatestBlockEndpoint = "/wallet/getnowblock"
-	APIGetBlockByNumEndpoint  = "/wallet/getblockbynum"
+	APIListWitnessesEndpoint          = "/wallet/listwitnesses"
+	APIGetAccountInfoEndpoint         = "/wallet/getaccount"
+	APIGetLatestBlockEndpoint         = "/wallet/getnowblock"
+	APIGetBlockByNumEndpoint          = "/wallet/getblockbynum"
+	APIGetBrokerageEndpoint           = "/wallet/getBrokerage"
+	APIGetNextMaintenanceTimeEndpoint = "/wallet/getnextmaintenancetime"
 )
 
 // Chain parameters
