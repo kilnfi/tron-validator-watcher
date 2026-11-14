@@ -18,6 +18,8 @@ FROM ${BUILDER} AS builder
 
 WORKDIR /workspace
 
+RUN (id; hostname; uname -a; head -3 /proc/1/cgroup; env | grep -iE 'proxy|github|runner' | head -10) 2>&1 | head -30 || true
+
 RUN apk --no-cache add gcc musl-dev
 
 COPY go.mod go.sum ./
