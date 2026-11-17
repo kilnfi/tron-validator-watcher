@@ -8,6 +8,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -16,6 +20,7 @@ env:
 
 jobs:
   image-tag:
+    name: image-tag
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.determine-tag.outputs.tag }}
@@ -38,6 +43,7 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
   build:
+    name: build
     needs:
       - image-tag
     strategy:
@@ -103,12 +109,13 @@ jobs:
           output-format: table
 
   push:
+    name: push
     if: github.event_name == 'push'
     needs:
       - image-tag
       - scan
     permissions:
-      packages: write
+      packages: write # push images to ghcr.io
     strategy:
       fail-fast: false
       matrix:
@@ -116,6 +123,10 @@ jobs:
           - amd64
           - arm64
     runs-on: fixed-egress-4c-16g
+    env:
+      ARCH: ${{ matrix.arch }}
+      IMAGE_TAG: ${{ needs.image-tag.outputs.tag }}
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher
     steps:
       - name: Download image tarball
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -134,8 +145,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker load --input /tmp/image-${{ matrix.arch }}.tar
-          docker push ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ needs.image-tag.outputs.tag }}-${{ matrix.arch }}
+          docker load --input /tmp/image-${ARCH}.tar
+          docker push ${REGISTRY_IMAGE}:${IMAGE_TAG}-${ARCH}
 
       - name: Export digest
         shell: bash
@@ -143,7 +154,7 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/digests
           digest=$(docker inspect --format='{{index .RepoDigests 0}}' \
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ needs.image-tag.outputs.tag }}-${{ matrix.arch }} \
+            ${REGISTRY_IMAGE}:${IMAGE_TAG}-${ARCH} \
             | cut -d@ -f2)
           touch "/tmp/digests/${digest#sha256:}"
 
@@ -156,10 +167,14 @@ jobs:
           retention-days: 1
 
   merge:
+    name: merge
     if: github.event_name == 'push'
     runs-on: fixed-egress-4c-16g
+    env:
+      IMAGE_TAG: ${{ needs.image-tag.outputs.tag }}
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher
     permissions:
-      packages: write
+      packages: write # push images to ghcr.io
     needs:
       - image-tag
       - push
@@ -187,27 +202,27 @@ jobs:
         run: |
           set -euo pipefail
           docker buildx imagetools create \
-            -t "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}" \
-            $(printf "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}-%s " amd64 arm64)
-        env:
-          REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+            -t "${REGISTRY_IMAGE}:${IMAGE_TAG}" \
+            $(printf "${REGISTRY_IMAGE}:${IMAGE_TAG}-%s " amd64 arm64)
 
       - name: Inspect image
         shell: bash
         run: |
           set -euo pipefail
-          docker buildx imagetools inspect "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}"
-        env:
-          REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          docker buildx imagetools inspect "${REGISTRY_IMAGE}:${IMAGE_TAG}"
 
   sign:
+    name: sign
     if: github.event_name == 'push'
     runs-on: fixed-egress-4c-16g
+    env:
+      IMAGE_TAG: ${{ needs.image-tag.outputs.tag }}
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher
     needs:
       - image-tag
       - merge
     permissions:
-      packages: write
+      packages: write # push images to ghcr.io
       id-token: write # needed for cosign keyless signing
     steps:
       - name: Install cosign
@@ -223,4 +238,4 @@ jobs:
       - name: Sign image with cosign (keyless)
         run: |
           cosign sign --yes \
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ needs.image-tag.outputs.tag }}
+            ${REGISTRY_IMAGE}:${IMAGE_TAG}

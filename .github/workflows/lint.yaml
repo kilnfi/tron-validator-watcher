@@ -8,6 +8,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -30,6 +34,7 @@ jobs:
           version: v2.11.3
 
   helm-chart:
+    name: helm-chart
     if: false
     runs-on: ubuntu-latest
     steps:

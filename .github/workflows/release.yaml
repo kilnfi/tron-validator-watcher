@@ -10,6 +10,10 @@ on:
         description: 'Tag to release'
         required: true
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
@@ -27,6 +31,7 @@ jobs:
         run: echo "Releasing ${GITHUB_REF_NAME}"
 
   binaries:
+    name: binaries
     needs: approve
     strategy:
       fail-fast: false
@@ -55,7 +60,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # zizmor: ignore[cache-poisoning] v4 only caches when `cache` is set
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
 
@@ -107,7 +112,7 @@ jobs:
     needs: binaries
     runs-on: fixed-egress-4c-16g
     permissions:
-      contents: write
+      contents: write # upload release assets
     steps:
       - name: Download binary artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -126,6 +131,7 @@ jobs:
           overwrite: true
 
   image-tag:
+    name: image-tag
     needs: approve
     runs-on: fixed-egress-4c-16g
     outputs:
@@ -148,6 +154,7 @@ jobs:
           fi
 
   build-images:
+    name: build-images
     needs:
       - image-tag
     strategy:
@@ -207,8 +214,8 @@ jobs:
           - arm64
     runs-on: fixed-egress-4c-16g
     permissions:
-      contents: read
-      security-events: write
+      contents: read # checkout
+      security-events: write # upload SARIF to code scanning
     steps:
       - name: Download image tarball
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -232,11 +239,12 @@ jobs:
           sarif_file: ${{ steps.scan.outputs.sarif }}
 
   push-images:
+    name: push-images
     needs:
       - image-tag
       - scan-images
     permissions:
-      packages: write
+      packages: write # push images to ghcr.io
     strategy:
       fail-fast: false
       matrix:
@@ -244,6 +252,10 @@ jobs:
           - amd64
           - arm64
     runs-on: fixed-egress-4c-16g
+    env:
+      ARCH: ${{ matrix.arch }}
+      IMAGE_TAG: ${{ needs.image-tag.outputs.tag }}
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher
     steps:
       - name: Download image tarball
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -262,8 +274,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker load --input /tmp/image-${{ matrix.arch }}.tar
-          docker push ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ needs.image-tag.outputs.tag }}-${{ matrix.arch }}
+          docker load --input /tmp/image-${ARCH}.tar
+          docker push ${REGISTRY_IMAGE}:${IMAGE_TAG}-${ARCH}
 
       - name: Export digest
         shell: bash
@@ -271,7 +283,7 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/digests
           digest=$(docker inspect --format='{{index .RepoDigests 0}}' \
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ needs.image-tag.outputs.tag }}-${{ matrix.arch }} \
+            ${REGISTRY_IMAGE}:${IMAGE_TAG}-${ARCH} \
             | cut -d@ -f2)
           touch "/tmp/digests/${digest#sha256:}"
 
@@ -284,12 +296,16 @@ jobs:
           retention-days: 1
 
   merge:
+    name: merge
     runs-on: fixed-egress-4c-16g
+    env:
+      IMAGE_TAG: ${{ needs.image-tag.outputs.tag }}
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher
     needs:
       - image-tag
       - push-images
     permissions:
-      packages: write
+      packages: write # push images to ghcr.io
     steps:
       - name: Download digests
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -314,26 +330,26 @@ jobs:
         run: |
           docker buildx imagetools create \
             -t "${REGISTRY_IMAGE}:latest" \
-            -t "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}" \
-            $(printf "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}-%s " amd64 arm64)
-        env:
-          REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+            -t "${REGISTRY_IMAGE}:${IMAGE_TAG}" \
+            $(printf "${REGISTRY_IMAGE}:${IMAGE_TAG}-%s " amd64 arm64)
 
       - name: Inspect image
         shell: bash
         run: |
           docker buildx imagetools inspect "${REGISTRY_IMAGE}:latest"
-          docker buildx imagetools inspect "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}"
-        env:
-          REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          docker buildx imagetools inspect "${REGISTRY_IMAGE}:${IMAGE_TAG}"
 
   sign:
+    name: sign
     runs-on: fixed-egress-4c-16g
+    env:
+      IMAGE_TAG: ${{ needs.image-tag.outputs.tag }}
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher
     needs:
       - image-tag
       - merge
     permissions:
-      packages: write
+      packages: write # push images to ghcr.io
       id-token: write # needed for cosign keyless signing
     steps:
       - name: Install cosign
@@ -349,6 +365,6 @@ jobs:
       - name: Sign image with cosign (keyless)
         run: |
           cosign sign --yes \
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ needs.image-tag.outputs.tag }}
+            ${REGISTRY_IMAGE}:${IMAGE_TAG}
           cosign sign --yes \
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+            ${REGISTRY_IMAGE}:latest

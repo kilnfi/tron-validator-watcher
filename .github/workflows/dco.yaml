@@ -5,9 +5,13 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: read # read the PR commit range
 
 jobs:
   dco:

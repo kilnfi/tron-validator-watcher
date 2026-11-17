@@ -7,6 +7,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -36,8 +40,8 @@ jobs:
     if: github.event_name == 'schedule'
     runs-on: fixed-egress-4c-16g
     permissions:
-      contents: read
-      security-events: write
+      contents: read # checkout
+      security-events: write # upload SARIF to code scanning
     steps:
       - name: Checkout repository
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
