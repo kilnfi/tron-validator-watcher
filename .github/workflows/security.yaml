@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
 
       - name: Scan source dependencies for vulnerabilities
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
           path: .
           fail-build: true
@@ -49,7 +49,7 @@ jobs:
           persist-credentials: false
 
       - name: Scan published image for vulnerabilities
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         id: scan
         with:
           image: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher:latest
@@ -59,6 +59,6 @@ jobs:
 
       - name: Upload SARIF report
         if: always()
-        uses: github/codeql-action/upload-sarif@5c8a8a642e79153f5d047b10ec1cba1d1cc65699 # v3.35.1
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
