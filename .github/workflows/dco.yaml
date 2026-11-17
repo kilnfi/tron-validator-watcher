@@ -12,18 +12,22 @@ permissions:
 jobs:
   dco:
     name: DCO check
-    runs-on: fixed-egress-4c-16g
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Check DCO sign-off
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          base="${{ github.event.pull_request.base.sha }}"
-          head="${{ github.event.pull_request.head.sha }}"
+          base="$BASE_SHA"
+          head="$HEAD_SHA"
           missing=()
           while IFS= read -r commit; do
             msg=$(git log --format="%B" -n 1 "$commit")
