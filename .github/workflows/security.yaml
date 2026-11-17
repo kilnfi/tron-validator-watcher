@@ -6,6 +6,7 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -37,7 +38,7 @@ jobs:
 
   grype:
     name: grype
-    if: github.event_name == 'schedule'
+    if: github.event_name != 'pull_request'
     runs-on: fixed-egress-4c-16g
     permissions:
       contents: read # checkout
