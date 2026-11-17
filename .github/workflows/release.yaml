@@ -18,7 +18,16 @@ env:
   IMAGE_NAME: tron-validator-watcher
 
 jobs:
+  approve:
+    name: Approve release
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Release approved
+        run: echo "Releasing ${GITHUB_REF_NAME}"
+
   binaries:
+    needs: approve
     strategy:
       fail-fast: false
       matrix:
@@ -117,6 +126,7 @@ jobs:
           overwrite: true
 
   image-tag:
+    needs: approve
     runs-on: fixed-egress-4c-16g
     outputs:
       tag: ${{ steps.determine-tag.outputs.tag }}
