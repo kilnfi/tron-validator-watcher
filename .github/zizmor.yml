@@ -1,0 +1,5 @@
+rules:
+  cache-poisoning:
+    ignore:
+      # setup-node v4 only caches when `cache` is set
+      - release.yaml:63

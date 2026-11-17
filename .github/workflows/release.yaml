@@ -10,31 +10,43 @@ on:
         description: 'Tag to release'
         required: true
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
-  contents: write
-  packages: write
-  id-token: write # needed for cosign keyless signing
+  contents: read
 
 env:
   BINARY_NAME: tron-validator-watcher
   IMAGE_NAME: tron-validator-watcher
 
 jobs:
+  approve:
+    name: Approve release
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Release approved
+        run: echo "Releasing ${GITHUB_REF_NAME}"
+
   binaries:
+    name: binaries
+    needs: approve
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: fixed-egress-4c-16g
+          - runner: ubuntu-latest
             os_name: linux
             arch: amd64
-          - runner: fixed-egress-4c-16g
+          - runner: ubuntu-latest
             os_name: linux
             arch: arm64
-          - runner: fixed-egress-4c-16g
+          - runner: ubuntu-latest
             os_name: darwin
             arch: amd64
-          - runner: fixed-egress-4c-16g
+          - runner: ubuntu-latest
             os_name: darwin
             arch: arm64
     runs-on: ${{ matrix.runner }}
@@ -43,10 +55,12 @@ jobs:
       OS_NAME: ${{ matrix.os_name }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
 
@@ -59,17 +73,20 @@ jobs:
           npm run build
 
       - name: Set up Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: 1.26
+          cache: false
 
       - name: Build ${{ matrix.os_name }}-${{ matrix.arch }} binary
         id: build
         shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
 
-          OUTPUT_NAME="${{ env.BINARY_NAME }}_${{ github.event.inputs.tag || github.ref_name }}_${OS_NAME}_${ARCH_NAME}"
+          OUTPUT_NAME="${BINARY_NAME}_${RELEASE_TAG}_${OS_NAME}_${ARCH_NAME}"
           OUTPUT_DIR="dist/${OUTPUT_NAME}"
           ARCHIVE_NAME="${OUTPUT_NAME}.tar.gz"
           ARCHIVE_PATH="${OUTPUT_DIR}/${ARCHIVE_NAME}"
@@ -78,12 +95,12 @@ jobs:
           mkdir -p "${OUTPUT_DIR}"
 
           CGO_ENABLED=0 GOOS="$OS_NAME" GOARCH="$ARCH_NAME" \
-            go build -ldflags="-s -w" -o "${OUTPUT_DIR}/${{ env.BINARY_NAME }}" cmd/watcher/main.go
+            go build -ldflags="-s -w" -o "${OUTPUT_DIR}/${BINARY_NAME}" cmd/watcher/main.go
 
-          tar -czvf "${ARCHIVE_PATH}" -C "${OUTPUT_DIR}" "${{ env.BINARY_NAME }}"
+          tar -czvf "${ARCHIVE_PATH}" -C "${OUTPUT_DIR}" "${BINARY_NAME}"
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: binary-${{ matrix.os_name }}-${{ matrix.arch }}
           path: ${{ steps.build.outputs.archive_path }}
@@ -94,9 +111,11 @@ jobs:
     name: Upload binaries to GitHub Release
     needs: binaries
     runs-on: fixed-egress-4c-16g
+    permissions:
+      contents: write # upload release assets
     steps:
       - name: Download binary artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: dist
           pattern: binary-*
@@ -112,23 +131,30 @@ jobs:
           overwrite: true
 
   image-tag:
+    name: image-tag
+    needs: approve
     runs-on: fixed-egress-4c-16g
     outputs:
       tag: ${{ steps.determine-tag.outputs.tag }}
     steps:
       - name: Determine Image Tag
         id: determine-tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          if [ "${{ github.ref_type }}" == "tag" ]; then
-              echo "Setting image tag to ${{ github.event.inputs.tag || github.ref_name }}"
-              echo "tag=${{ github.event.inputs.tag || github.ref_name }}" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          if [ "$GITHUB_REF_TYPE" == "tag" ]; then
+              echo "Setting image tag to $RELEASE_TAG"
+              echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           else
-              TAG="${{ github.event.inputs.tag || github.ref_name }}-$(echo ${{ github.sha }} | cut -c1-7)"
+              TAG="${RELEASE_TAG}-${GITHUB_SHA::7}"
               echo "Setting image tag to $TAG"
-              echo "tag=$TAG" >> $GITHUB_OUTPUT
+              echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           fi
 
   build-images:
+    name: build-images
     needs:
       - image-tag
     strategy:
@@ -140,16 +166,18 @@ jobs:
     runs-on: fixed-egress-4c-16g
     steps:
       - name: Checkout repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Build image (no push)
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: .
           file: Dockerfile
@@ -167,7 +195,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Upload image tarball
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-image-${{ matrix.arch }}
           path: /tmp/image-${{ matrix.arch }}.tar
@@ -186,11 +214,11 @@ jobs:
           - arm64
     runs-on: fixed-egress-4c-16g
     permissions:
-      contents: read
-      security-events: write
+      contents: read # checkout
+      security-events: write # upload SARIF to code scanning
     steps:
       - name: Download image tarball
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: release-image-${{ matrix.arch }}
           path: /tmp
@@ -206,14 +234,17 @@ jobs:
 
       - name: Upload SARIF report
         if: always()
-        uses: github/codeql-action/upload-sarif@5c8a8a642e79153f5d047b10ec1cba1d1cc65699 # v3
+        uses: github/codeql-action/upload-sarif@5c8a8a642e79153f5d047b10ec1cba1d1cc65699 # v3.35.1
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
 
   push-images:
+    name: push-images
     needs:
       - image-tag
       - scan-images
+    permissions:
+      packages: write # push images to ghcr.io
     strategy:
       fail-fast: false
       matrix:
@@ -221,15 +252,19 @@ jobs:
           - amd64
           - arm64
     runs-on: fixed-egress-4c-16g
+    env:
+      ARCH: ${{ matrix.arch }}
+      IMAGE_TAG: ${{ needs.image-tag.outputs.tag }}
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher
     steps:
       - name: Download image tarball
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: release-image-${{ matrix.arch }}
           path: /tmp
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -239,8 +274,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker load --input /tmp/image-${{ matrix.arch }}.tar
-          docker push ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ needs.image-tag.outputs.tag }}-${{ matrix.arch }}
+          docker load --input /tmp/image-${ARCH}.tar
+          docker push ${REGISTRY_IMAGE}:${IMAGE_TAG}-${ARCH}
 
       - name: Export digest
         shell: bash
@@ -248,12 +283,12 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/digests
           digest=$(docker inspect --format='{{index .RepoDigests 0}}' \
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ needs.image-tag.outputs.tag }}-${{ matrix.arch }} \
+            ${REGISTRY_IMAGE}:${IMAGE_TAG}-${ARCH} \
             | cut -d@ -f2)
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: digests-linux-${{ matrix.arch }}
           path: /tmp/digests/*
@@ -261,27 +296,33 @@ jobs:
           retention-days: 1
 
   merge:
+    name: merge
     runs-on: fixed-egress-4c-16g
+    env:
+      IMAGE_TAG: ${{ needs.image-tag.outputs.tag }}
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher
     needs:
       - image-tag
       - push-images
+    permissions:
+      packages: write # push images to ghcr.io
     steps:
       - name: Download digests
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: /tmp/digests
           pattern: digests-*
           merge-multiple: true
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
@@ -289,33 +330,33 @@ jobs:
         run: |
           docker buildx imagetools create \
             -t "${REGISTRY_IMAGE}:latest" \
-            -t "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}" \
-            $(printf "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}-%s " amd64 arm64)
-        env:
-          REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+            -t "${REGISTRY_IMAGE}:${IMAGE_TAG}" \
+            $(printf "${REGISTRY_IMAGE}:${IMAGE_TAG}-%s " amd64 arm64)
 
       - name: Inspect image
         shell: bash
         run: |
           docker buildx imagetools inspect "${REGISTRY_IMAGE}:latest"
-          docker buildx imagetools inspect "${REGISTRY_IMAGE}:${{ needs.image-tag.outputs.tag }}"
-        env:
-          REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          docker buildx imagetools inspect "${REGISTRY_IMAGE}:${IMAGE_TAG}"
 
   sign:
+    name: sign
     runs-on: fixed-egress-4c-16g
+    env:
+      IMAGE_TAG: ${{ needs.image-tag.outputs.tag }}
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/tron-validator-watcher
     needs:
       - image-tag
       - merge
     permissions:
-      packages: write
-      id-token: write
+      packages: write # push images to ghcr.io
+      id-token: write # needed for cosign keyless signing
     steps:
       - name: Install cosign
         uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -324,6 +365,6 @@ jobs:
       - name: Sign image with cosign (keyless)
         run: |
           cosign sign --yes \
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ needs.image-tag.outputs.tag }}
+            ${REGISTRY_IMAGE}:${IMAGE_TAG}
           cosign sign --yes \
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+            ${REGISTRY_IMAGE}:latest
